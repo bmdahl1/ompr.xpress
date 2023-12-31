@@ -3,6 +3,9 @@
 #' @param control a list of options passed to \code{xpress::xprs_optimize()}.
 #' A complete list of control parameters
 #'
+#' @ import ompr
+#' @ import xpress
+#'
 #'# To Do List
 #'
 #' Pre Model Run
@@ -17,7 +20,7 @@
 #' Ensure Parameters Are Available in OMPR model functions
 #'
 #' @details
-#' The Xpress solver offers a extraordinnarily wide range of control settings. The full list of
+#' The Xpress solver offers a extraordinarily wide range of control settings. The full list of
 #' controls available can be found within the links below. While the control are broken out
 #' into integer, double, and string controls, there's no need to delineate this in your function
 #' call as that will be handled internally.
@@ -67,8 +70,6 @@ xpress_optimizer <- function(control = list()){
 
 
   }
-d
-
 
 }
 
@@ -100,6 +101,7 @@ d
 #' @importFrom stats setNames
 #' @export
 highs_optimizer <- function(control = list()) {
+
   function(model) {
     variable_names <- variable_keys(model)
 
