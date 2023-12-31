@@ -1,8 +1,39 @@
-
 #' Run the Xpress solver through the OMPR interface.
 #'
 #' @param control a list of options passed to \code{xpress::xprs_optimize()}.
 #' A complete list of control parameters
+#'
+#'# To Do List
+#'
+#' Pre Model Run
+#' Convert Upper And Lower Bounds Passing Into Algorithm
+#' Create Conversion For All Model Parameter Settings
+#'      Check Whether Parameter
+#'      Create Function To Create Call To Xpress Model
+#'
+#' Post Model
+#' Extract All Model Parameters
+#' Return All Parameters In List
+#' Ensure Parameters Are Available in OMPR model functions
+#'
+#' @details
+#' The Xpress solver offers a extraordinnarily wide range of control settings. The full list of
+#' controls available can be found within the links below. While the control are broken out
+#' into integer, double, and string controls, there's no need to delineate this in your function
+#' call as that will be handled internally.
+#'
+#' General Control Parameter Discussion With List of Controls
+#' https://www.fico.com/fico-xpress-optimization/docs/latest/solver/optimizer/HTML/chapter7.html
+#'
+#' Integer Control Parameters
+#' https://www.fico.com/fico-xpress-optimization/docs/latest/solver/optimizer/HTML/XPRSsetintcontrol.html#'
+#'
+#' Double Control Parameters
+#' https://www.fico.com/fico-xpress-optimization/docs/latest/solver/optimizer/HTML/XPRSsetdblcontrol.html
+#'
+#' String Control Parameters
+#' https://www.fico.com/fico-xpress-optimization/docs/latest/solver/optimizer/HTML/XPRSsetstrcontrol.html
+#'
 #'
 #' @return A list returning all the results and parameters from the Xpress optimization run.
 #' @export
@@ -18,17 +49,32 @@ xpress_optimizer <- function(control = list()){
   # Create Model Run Function
   function(model){
 
-    #
+    # Extract Values From OMPR Model Object
+    obj <- ompr::objective_function(model)
+    constraints <- ompr::extract_constraints(model)
+    var_names <- ompr::variable_keys(model)
+
+    # Create Xpress List For Problem Data
+    xpress_list <- list()
+
+    # Create Objective Function
+    xpress_list$objcoef <- obj$solution |> as.numeric()
+
+    # Get Row Coefficients
+    xpress_list$A <- constraints$matrix
+
 
 
 
   }
-
+d
 
 
 }
 
 #' Solve {ompr} models using HiGHS
+#'
+#'
 #'
 #' The solver uses {highs} internally to solve MIP models.
 #'
