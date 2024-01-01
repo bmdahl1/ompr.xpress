@@ -5,12 +5,6 @@ format: html
 editor: visual
 ---
 
-1.  pull out all list names
-2.  compile list of all string, double, and integer control parameters
-3.  check if any names are in control parameters
-4.  compile parameter types
-5.  loop through all parameter types and set parameter
-
 ## Import Libraries
 
 ```{r}
@@ -143,6 +137,32 @@ model <- model |>
   # Create Objective Function
 model <- model |>
   set_objective(sum_over(gen[p]*price$PRICE[p], p = 1:per))
+
+```
+
+#### Extract Status
+
+```{r}
+
+get_xpress_status <- function(x){
+
+  # Calculate Status
+  temp_status <- switch(as.character(x),
+                 "0" = "XPRS_MIP_NOT_LOADED",
+                 "1" = "XPRS_MIP_LP_NOT_OPTIMAL",
+                 "2" = "XPRS_MIP_LP_OPTIMAL",
+                 "3" = "XPRS_MIP_NO_SOL_FOUND",
+                 "4" = "XPRS_MIP_NO_SOL_FOUND",
+                 "5" = "XPRS_MIP_INFEAS",
+                 "6" = "XPRS_MIP_OPTIMAL",
+                 "7" = "XPRS_MIP_UNBOUNDED",
+                 "error")
+
+  # Return Status
+  return(temp_status)
+
+}
+
 
 ```
 
@@ -303,52 +323,121 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem'), ..
   # Create Model Run Function
   function(model){
     
-    test_control <<- c(control,...)
-  
+    # test_control <<- c(control,...)
+
     # Extract values from Model using OMPR functions
     obj <- ompr::objective_function(model)
     constraints <- ompr::extract_constraints(model)
     var_names <- ompr::variable_keys(model)
     upper_bounds <- ompr::variable_bounds(model)[['upper']]
     lower_bounds <- ompr::variable_bounds(model)[['lower']]
-    obj_sense <- switch(model$objective$sense, 'max' = -1L, 'min' = 1L, 
-                       stop('Objective sense not valid'))
-     
+    obj_sense <- switch(model$objective$sense, 'max' = -1L, 'min' = 1L,
+                        stop('Objective sense not valid'))
+
     # Create List For Xpress Problem Data
     problemdata <- list()
-     
+
     # Create Objective Function
     problemdata$objcoef <- obj$solution |> as.numeric()
-     
+
     # Get Row Coefficients
     problemdata$A <- constraints$matrix
-      
+
     # Get Variable Types
     problemdata$columntypes <- (lapply(model$variable_types, FUN = xpress_col_type_conversion) |>
                                     lapply(var_names, FUN = xpress_col_type_fill, conversion_list = _) |>
-                                     unlist())
-     
+                                    unlist())
+
     # Get problemdata Types
     problemdata$rowtype <- (lapply(X = constraints$sense, FUN = xpress_sense_conversion) |> unlist())
-      
+
     # Get Right-Hand Side
     problemdata$rhs <- constraints$rhs |> as.numeric()
-      
+
     # specify lower bounds and upper bounds for the columns
     problemdata$lb <- lower_bounds
     problemdata$ub <- upper_bounds
-     
+
     # Add Variable Names
     problemdata$colname <- var_names
-    
+
     # Name Problem
-    problemdata$probname <- control$problem_name 
-     
+    problemdata$probname <-'test' 
+    #control$problem_name
+
     # Load Problem Into Xpress Prob Object
     p <- xprs_loadproblemdata(problemdata = problemdata)
-    
+
     # Apply All Control Parameters
     xpress_apply_control_params(prob = p, control_params = control)
+    
+    # Set Problem Sense
+    chgobjsense(p, obj_sense)
+
+    # Run Xpress Optimization
+    summary(xpress::xprs_optimize(p))
+
+     # Extract Xpress Results
+    xpress_results <- data.frame(Variable = problemdata$colname, Value = xprs_getsolution(p))
+
+    # Get Double Attributes
+    dbl_attributes <- lapply(xprs_getdoubleattributes(),
+           function(x) { getdblattrib(p, x) })
+
+    # Get Integer Attritubes
+    int_attributes <- lapply(xprs_getintattributes(),
+                             function(x) { getintattrib(p, x) })
+
+    # Get String Attributes
+    str_attributes <- lapply(xprs_getstringattributes(),
+                             function(x) { getstringattrib(p, x) })
+
+    # Get Integer Controls
+    int_controls <- lapply(xprs_getintcontrols(),
+                           function(x) { getintcontrol(p, x) })
+
+    # Get Double Controls
+    dbl_controls <- lapply(xprs_getdoublecontrols(),
+                           function(x) { getdblcontrol(p, x) })
+
+    # String Control
+    str_controls <- lapply(xprs_getstringcontrols(),
+                           function(x) { getstringcontrol(p, x) })
+
+    # Fix Global Variables
+    xpress::fixmipentities(prob = p, options = 0)
+
+    # Rerun Problem As Linear Model For Sensitivity Analysis
+    xpress::lpoptimize(p)
+    
+    # Extract LP Solution
+    lp_solution <- xpress::getlpsol(prob = p)
+
+    # Extract Sensitivity Ranges
+    obj_sensitivity <- xpress::objsa(p, 1:model$column_count)
+    bnd_sensitivity <- xpress::bndsa(p, 1:model$column_count)
+    rhs_sensitivy <- xpress::rhssa(prob = p, rowind = 0:((constraints$rhs |> length())-1))
+  
+    # Calculate Reduced Costs
+    reduced_cost_function <- xpress::calcreducedcosts(prob = p, 
+                                             duals = lp_solution$duals,
+                                             solution = lp_solution$x)
+    
+    # Create Solution List
+    xpress_solution <- ompr::new_solution(model = model,
+                                          objective_value = dbl_attributes$OBJVAL,
+                                          status = 'optimal',
+                                          solution = xpress_results,
+                                          additional_solver_output = list(obj_sensitivity = obj_sensitivity,
+                                                                          bnd_sensitivity = bnd_sensitivity,
+                                                                          rhs_sensitivity = rhs_sensitivy,
+                                                                          reduced_costs = reduced_cost,
+                                                                          xpress_problem = p))
+    
+    # (int_attributes$MIPSTATUS |> get_xpress_status())
+    
+    # Return Solution
+    return(xpress_solution)
 
   }
 
@@ -360,7 +449,6 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem'), ..
 
 model |> solve_model(xpress_optimizer(TIMELIMIT = 60, 
                                       MAXMIP = 1, 
-                                      RANDOMSEED = 0, 
-                                      MPSOBJNAME = 'cheese'))
+                                      RANDOMSEED = 0))
 
 ```
