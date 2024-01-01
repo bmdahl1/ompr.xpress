@@ -242,50 +242,53 @@ xpress_col_type_fill <- function(x, conversion_list){
 
 ```
 
-Extract All Parameters
+#### Apply All Control Parameters
 
 ```{r}
 
-# 
-xpress_extract_control_params <- function(x){
+xpress_apply_control_params <- function(prob, control_params){
   
   # Get list of all control params
-  xpress_control_params <- c(xpress::xprs_getintcontrols(),
-                             xpress::xprs_getdoublecontrols(),
-                             xpress::xprs_getstringcontrols())
-  
-  # 
-  
-  
-  
-}
-
-
-```
-
-Apply All Control Parameters
-
-```{r}
-
-xpress_apply_control_params <- function(x){
-  
-  # Get list of all control params and their type
-  xpress_control_params <- c(names(xpress::xprs_getintcontrols()) = 'integer',
-                             names(xpress::xprs_getdoublecontrols()) = 'double',
-                             names(xpress::xprs_getstringcontrols()) = 'string')
+  xpress_control_params <- c(lapply(X = xprs_getintcontrols(), FUN = \(x) x <- 'integer'),
+                             lapply(X = xprs_getdoublecontrols(), FUN = \(x) x <- 'double'),
+                             lapply(X = xprs_getstringcontrols(), FUN = \(x) x <- 'string'))
   
   # Filter Control List
-  filtered_x <- x[names(x) %in% names(xpress_control_params)]
+  filtered_x <- control_params[names(control_params) %in% names(xpress_control_params)]
   
   # Classify Controls
   for (r in 1:length(filtered_x)){
     
-    print(filtered_x[r] |> names())
+    # Get Control Type, Parameter, Value
+    control_type <- xpress_control_params[[filtered_x[r] |> names()]]
+    control_parameter <- filtered_x[r] |> names()
+    control_value <- filtered_x[r] |> unlist() |> unname()
+    
+    # Set Parameter
+    if (control_type=='integer'){
+      
+      # Set Integer Parameter
+      xpress::setintcontrol(prob = p,
+                            control = utils::getFromNamespace(control_parameter, "xpress"),
+                            control_value |> as.integer())
+      
+    } else if(control_type == 'double'){
+      
+      # Set Double Parameter
+      xpress::setdblcontrol(prob = p,
+                            control = utils::getFromNamespace(control_parameter, "xpress"),
+                            control_value |> as.double())
+      
+    } else if(control_type == 'string'){
+      
+      # Set String Parameter
+      xpress::setstrcontrol(prob = p,
+                            control = utils::getFromNamespace(control_parameter, "xpress"),
+                            control_value |> as.character())
+      
+    }
     
   }
-  
-  
-  
   
 }
 
@@ -303,53 +306,61 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem'), ..
     test_control <<- c(control,...)
   
     # Extract values from Model using OMPR functions
-    # obj <- ompr::objective_function(model)
-    # constraints <- ompr::extract_constraints(model)
-    # var_names <- ompr::variable_keys(model)
-    # upper_bounds <- ompr::variable_bounds(model)[['upper']]
-    # lower_bounds <- ompr::variable_bounds(model)[['lower']]
-    # obj_sense <- switch(model$objective$sense, 'max' = -1L, 'min' = 1L, 
-    #                     stop('Objective sense not valid'))
-    # 
-    # # Create List For Xpress Problem Data
-    # problemdata <- list()
-    # 
-    # # Create Objective Function
-    # problemdata$objcoef <- obj$solution |> as.numeric()
-    # 
-    # # Get Row Coefficients
-    # problemdata$A <- constraints$matrix
-    #  
-    # # Get Variable Types
-    # problemdata$columntypes <- (lapply(model$variable_types, FUN = xpress_col_type_conversion) |>
-    #                                lapply(var_names, FUN = xpress_col_type_fill, conversion_list = _) |>
-    #                                 unlist())
-    #  
-    # # Get problemdata Types
-    # problemdata$rowtype <- (lapply(X = constraints$sense, FUN = xpress_sense_conversion) |> unlist())
-    #  
-    # # Get Right-Hand Side
-    # problemdata$rhs <- constraints$rhs |> as.numeric()
-    #  
-    # # specify lower bounds and upper bounds for the columns
-    # problemdata$lb <- lower_bounds
-    # problemdata$ub <- upper_bounds
-    #  
-    # # Add Variable Names
-    # problemdata$colname <- var_names
-    # 
-    # # Name Problem
-    # problemdata$probname <- control$problem_name 
-    # 
-    # # Load Problem Into Xpress Prob Object
-    # p <- xprs_loadproblemdata(problemdata = problemdata)
+    obj <- ompr::objective_function(model)
+    constraints <- ompr::extract_constraints(model)
+    var_names <- ompr::variable_keys(model)
+    upper_bounds <- ompr::variable_bounds(model)[['upper']]
+    lower_bounds <- ompr::variable_bounds(model)[['lower']]
+    obj_sense <- switch(model$objective$sense, 'max' = -1L, 'min' = 1L, 
+                       stop('Objective sense not valid'))
+     
+    # Create List For Xpress Problem Data
+    problemdata <- list()
+     
+    # Create Objective Function
+    problemdata$objcoef <- obj$solution |> as.numeric()
+     
+    # Get Row Coefficients
+    problemdata$A <- constraints$matrix
+      
+    # Get Variable Types
+    problemdata$columntypes <- (lapply(model$variable_types, FUN = xpress_col_type_conversion) |>
+                                    lapply(var_names, FUN = xpress_col_type_fill, conversion_list = _) |>
+                                     unlist())
+     
+    # Get problemdata Types
+    problemdata$rowtype <- (lapply(X = constraints$sense, FUN = xpress_sense_conversion) |> unlist())
+      
+    # Get Right-Hand Side
+    problemdata$rhs <- constraints$rhs |> as.numeric()
+      
+    # specify lower bounds and upper bounds for the columns
+    problemdata$lb <- lower_bounds
+    problemdata$ub <- upper_bounds
+     
+    # Add Variable Names
+    problemdata$colname <- var_names
+    
+    # Name Problem
+    problemdata$probname <- control$problem_name 
+     
+    # Load Problem Into Xpress Prob Object
+    p <- xprs_loadproblemdata(problemdata = problemdata)
     
     # Apply All Control Parameters
+    xpress_apply_control_params(prob = p, control_params = control)
 
   }
-  
-
 
 }
+
+```
+
+```{r}
+
+model |> solve_model(xpress_optimizer(TIMELIMIT = 60, 
+                                      MAXMIP = 1, 
+                                      RANDOMSEED = 0, 
+                                      MPSOBJNAME = 'cheese'))
 
 ```
