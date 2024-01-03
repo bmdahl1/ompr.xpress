@@ -12,3 +12,4 @@ model_results <- MIPModel() |>
 test_that("simple model", {
   expect_equal(model_results$objective_value, 11.25)
 })
+load_all()
