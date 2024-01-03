@@ -311,35 +311,40 @@ xpress_apply_control_params <- function(prob, control_params){
   # Filter Control List
   filtered_x <- control_params[names(control_params) %in% names(xpress_control_params)]
   
-  # Classify Controls
-  for (r in 1:length(filtered_x)){
-    
-    # Get Control Type, Parameter, Value
-    control_type <- xpress_control_params[[filtered_x[r] |> names()]]
-    control_parameter <- filtered_x[r] |> names()
-    control_value <- filtered_x[r] |> unlist() |> unname()
-    
-    # Set Parameter
-    if (control_type=='integer'){
+  # Apply Controls
+  if (length(filtered_x > 0)){
+  
+    # Classify Controls
+    for (r in 1:length(filtered_x)){
       
-      # Set Integer Parameter
-      xpress::setintcontrol(prob = prob,
-                            control = utils::getFromNamespace(control_parameter, "xpress"),
-                            control_value |> as.integer())
+      # Get Control Type, Parameter, Value
+      control_type <- xpress_control_params[[filtered_x[r] |> names()]]
+      control_parameter <- filtered_x[r] |> names()
+      control_value <- filtered_x[r] |> unlist() |> unname()
       
-    } else if(control_type == 'double'){
-      
-      # Set Double Parameter
-      xpress::setdblcontrol(prob = prob,
-                            control = utils::getFromNamespace(control_parameter, "xpress"),
-                            control_value |> as.double())
-      
-    } else if(control_type == 'string'){
-      
-      # Set String Parameter
-      xpress::setstrcontrol(prob = prob,
-                            control = utils::getFromNamespace(control_parameter, "xpress"),
-                            control_value |> as.character())
+      # Set Parameter
+      if (control_type=='integer'){
+        
+        # Set Integer Parameter
+        xpress::setintcontrol(prob = prob,
+                              control = utils::getFromNamespace(control_parameter, "xpress"),
+                              control_value |> as.integer())
+        
+      } else if(control_type == 'double'){
+        
+        # Set Double Parameter
+        xpress::setdblcontrol(prob = prob,
+                              control = utils::getFromNamespace(control_parameter, "xpress"),
+                              control_value |> as.double())
+        
+      } else if(control_type == 'string'){
+        
+        # Set String Parameter
+        xpress::setstrcontrol(prob = prob,
+                              control = utils::getFromNamespace(control_parameter, "xpress"),
+                              control_value |> as.character())
+        
+      }
       
     }
     
@@ -349,12 +354,27 @@ xpress_apply_control_params <- function(prob, control_params){
 
 ```
 
+```{r}
+
+sim_model <- MIPModel() |>
+  add_variable(x, type = "integer") |>
+  add_variable(y, type = "continuous", lb = 0) |>
+  set_bounds(x, lb = 0) |>
+  set_objective(x + y, "max") |>
+  add_constraint(x + y <= 11.25)
+  # solve_model(xpress_optimizer())
+
+
+```
+
 ### Optimize Function
 
 ```{r}
 
 xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem'), ...){
-
+  
+  model <- sim_model
+  
   # Create Model Run Function
   function(model){
     
@@ -398,7 +418,8 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem'), ..
     problemdata$colname <- var_names
 
     # Name Problem
-    problemdata$probname <-control$problem_name
+    problemdata$probname <- "test"
+      control$problem_name
 
     # Load Problem Into Xpress Prob Object
     p <- xpress::xprs_loadproblemdata(problemdata = problemdata)

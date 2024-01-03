@@ -146,41 +146,47 @@ xpress_apply_control_params <- function(prob, control_params){
   # Filter Control List
   filtered_x <- control_params[names(control_params) %in% names(xpress_control_params)]
 
-  # Classify Controls
-  for (r in 1:length(filtered_x)){
+  # Apply Controls
+  if (length(filtered_x > 0)){
 
-    # Get Control Type, Parameter, Value
-    control_type <- xpress_control_params[[filtered_x[r] |> names()]]
-    control_parameter <- filtered_x[r] |> names()
-    control_value <- filtered_x[r] |> unlist() |> unname()
+    # Classify Controls
+    for (r in 1:length(filtered_x)){
 
-    # Set Parameter
-    if (control_type=='integer'){
+      # Get Control Type, Parameter, Value
+      control_type <- xpress_control_params[[filtered_x[r] |> names()]]
+      control_parameter <- filtered_x[r] |> names()
+      control_value <- filtered_x[r] |> unlist() |> unname()
 
-      # Set Integer Parameter
-      xpress::setintcontrol(prob = prob,
-                            control = utils::getFromNamespace(control_parameter, "xpress"),
-                            control_value |> as.integer())
+      # Set Parameter
+      if (control_type=='integer'){
 
-    } else if(control_type == 'double'){
+        # Set Integer Parameter
+        xpress::setintcontrol(prob = prob,
+                              control = utils::getFromNamespace(control_parameter, "xpress"),
+                              control_value |> as.integer())
 
-      # Set Double Parameter
-      xpress::setdblcontrol(prob = prob,
-                            control = utils::getFromNamespace(control_parameter, "xpress"),
-                            control_value |> as.double())
+      } else if(control_type == 'double'){
 
-    } else if(control_type == 'string'){
+        # Set Double Parameter
+        xpress::setdblcontrol(prob = prob,
+                              control = utils::getFromNamespace(control_parameter, "xpress"),
+                              control_value |> as.double())
 
-      # Set String Parameter
-      xpress::setstrcontrol(prob = prob,
-                            control = utils::getFromNamespace(control_parameter, "xpress"),
-                            control_value |> as.character())
+      } else if(control_type == 'string'){
+
+        # Set String Parameter
+        xpress::setstrcontrol(prob = prob,
+                              control = utils::getFromNamespace(control_parameter, "xpress"),
+                              control_value |> as.character())
+
+      }
 
     }
 
   }
 
 }
+
 #'
 #' Run the Xpress solver through the OMPR interface.
 #'
@@ -283,7 +289,7 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem'), ..
     xpress::chgobjsense(p, obj_sense)
 
     # Run Xpress Optimization
-    xpress::summary(xpress::xprs_optimize(p))
+    summary(xpress::xprs_optimize(p))
 
     # Extract Xpress Results
     xpress_results <- data.frame(Variable = problemdata$colname, Value = xpress::xprs_getsolution(p))
