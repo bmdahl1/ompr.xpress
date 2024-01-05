@@ -2,7 +2,7 @@
 % Please edit documentation in R/xpress_optimizer.R
 \name{get_xpress_status}
 \alias{get_xpress_status}
-\title{Get Xpress Optimized MOdel Status}
+\title{Get Xpress Optimized Model Status}
 \usage{
 get_xpress_status(x)
 }
@@ -10,5 +10,5 @@ get_xpress_status(x)
 \item{x}{an integer value representing the status of the optimized model}
 }
 \description{
-Get Xpress Optimized MOdel Status
+Get Xpress Optimized Model Status
 }

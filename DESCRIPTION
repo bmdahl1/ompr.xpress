@@ -1,5 +1,5 @@
 Package: ompr.xpress
-Title: A solver for 'ompr' that uses the FICO Xpress algorithm. 
+Title: A solver for 'ompr' that uses the FICO Xpress algorithm
 Version: 0.0.0.9000
 Authors@R: 
     person("Brandon", "Dahl", , "bmdahl1@gmail.com", role = c("aut", "cre"))
@@ -11,6 +11,7 @@ RoxygenNote: 7.2.3
 Imports: 
     ompr
 Suggests: 
-    testthat (>= 3.0.0),
-    xpress
+    testthat (>= 3.0.0)
 Config/testthat/edition: 3
+Depends: 
+    xpress

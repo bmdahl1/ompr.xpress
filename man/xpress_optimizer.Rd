@@ -8,7 +8,7 @@ xpress_optimizer(control = list(problem_name = "Xpress Problem"), ...)
 }
 \arguments{
 \item{control}{a list of options passed to \code{xpress::xprs_optimize()}.
-A complete list of control parameters are availalbe in the details section.}
+A complete list of control parameters are available in the details section.}
 }
 \value{
 A list returning all the results and parameters from the Xpress optimization run.

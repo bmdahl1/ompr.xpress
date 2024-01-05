@@ -1,4 +1,4 @@
-#' Get Xpress Optimized MOdel Status
+#' Get Xpress Optimized Model Status
 #'
 #' @param x an integer value representing the status of the optimized model
 #'
@@ -191,7 +191,7 @@ xpress_apply_control_params <- function(prob, control_params){
 #' Run the Xpress solver through the OMPR interface.
 #'
 #' @param control a list of options passed to \code{xpress::xprs_optimize()}.
-#' A complete list of control parameters are availalbe in the details section.
+#' A complete list of control parameters are available in the details section.
 #'
 #' @import ompr
 #' @import xpress
