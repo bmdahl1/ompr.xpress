@@ -226,14 +226,6 @@ xpress_apply_control_params <- function(prob, control_params){
 #' }
 xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem'), ...){
 
-  # Check For Xpress Package
-  if (!requireNamespace("xpress", quietly = TRUE)){
-
-    # Notify IUser
-    stop('You dont have the Xpress package installed')
-
-  }
-
   # Create Model Run Function
   function(model){
 
@@ -277,7 +269,8 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem'), ..
     problemdata$colname <- var_names
 
     # Name Problem
-    problemdata$probname <- control$problem_name
+    problemdata$probname <- "test"
+    control$problem_name
 
     # Load Problem Into Xpress Prob Object
     p <- xpress::xprs_loadproblemdata(problemdata = problemdata)
@@ -286,13 +279,13 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem'), ..
     xpress_apply_control_params(prob = p, control_params = control)
 
     # Set Problem Sense
-    xpress::chgobjsense(p, obj_sense)
+    chgobjsense(p, obj_sense)
 
     # Run Xpress Optimization
     summary(xpress::xprs_optimize(p))
 
     # Extract Xpress Results
-    xpress_results <- data.frame(Variable = problemdata$colname, Value = xpress::xprs_getsolution(p))
+    xpress_results <- data.frame(Variable = problemdata$colname, Value = xprs_getsolution(p))
 
     # Get Double Attributes
     dbl_attributes <- lapply(xprs_getdoubleattributes(),
@@ -319,7 +312,12 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem'), ..
                            function(x) { getstringcontrol(p, x) })
 
     # Fix Global Variables
-    xpress::fixmipentities(prob = p, options = 0)
+    xpress_verison <- packageVersion('xpress') |> as.character()
+    if (compareVersion(xpress_verison |> as.character(),'9.2.5') >= 0){
+      xpress::fixmipentities(prob = p, options = 0)
+    } else {
+      xpress::fixglobals(prob = p, options = 0)
+    }
 
     # Rerun Problem As Linear Model For Sensitivity Analysis
     xpress::lpoptimize(p)
