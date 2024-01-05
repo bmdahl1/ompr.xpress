@@ -226,6 +226,14 @@ xpress_apply_control_params <- function(prob, control_params){
 #' }
 xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem'), ...){
 
+  # Check For Xpress Package
+  if (!requireNamespace("xpress", quietly = TRUE)){
+
+    # Notify IUser
+    stop('You dont have the Xpress package installed')
+
+  }
+
   # Create Model Run Function
   function(model){
 
@@ -269,8 +277,7 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem'), ..
     problemdata$colname <- var_names
 
     # Name Problem
-    problemdata$probname <- "test"
-    control$problem_name
+    problemdata$probname <- control$problem_name
 
     # Load Problem Into Xpress Prob Object
     p <- xpress::xprs_loadproblemdata(problemdata = problemdata)
