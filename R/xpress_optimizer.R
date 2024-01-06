@@ -333,14 +333,9 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem'), ..
     lp_solution <- xpress::getlpsol(prob = p)
 
     # Extract Sensitivity Ranges
-    obj_sensitivity <- xpress::objsa(p, 1:model$column_count)
-    bnd_sensitivity <- xpress::bndsa(p, 1:model$column_count)
+    obj_sensitivity <- xpress::objsa(p, 0:(int_attributes$COLS-1))
+    bnd_sensitivity <- xpress::bndsa(p, 0:(int_attributes$COLS-1))
     rhs_sensitivy <- xpress::rhssa(prob = p, rowind = 0:((constraints$rhs |> length())-1))
-
-    # Calculate Reduced Costs
-    reduced_cost_function <- xpress::calcreducedcosts(prob = p,
-                                                      duals = lp_solution$duals,
-                                                      solution = lp_solution$x)
 
     # Get Xpress Status
     xpress_status <- int_attributes$MIPSTATUS |> get_xpress_status()
@@ -353,7 +348,7 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem'), ..
                                           additional_solver_output = list(obj_sensitivity = obj_sensitivity,
                                                                           bnd_sensitivity = bnd_sensitivity,
                                                                           rhs_sensitivity = rhs_sensitivy,
-                                                                          reduced_costs = reduced_cost_function,
+                                                                          lp_solution = lp_solution,
                                                                           xpress_status = xpress_status,
                                                                           xpress_problem = p))
 
