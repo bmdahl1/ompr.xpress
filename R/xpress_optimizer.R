@@ -291,69 +291,101 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem'), ..
     # Run Xpress Optimization
     summary(xpress::xprs_optimize(p))
 
-    # Extract Xpress Results
-    xpress_results <- data.frame(Variable = problemdata$colname, Value = xprs_getsolution(p))
+    # Get Solution Status
+    sol_status <- getintattrib(p, xpress:::MIPSTATUS) |> get_ompr_status()
 
-    # Get Double Attributes
-    dbl_attributes <- lapply(xprs_getdoubleattributes(),
-                             function(x) { getdblattrib(p, x) })
+    # Run If Feasible
+    if (sol_status=='optimal'){
 
-    # Get Integer Attritubes
-    int_attributes <- lapply(xprs_getintattributes(),
-                             function(x) { getintattrib(p, x) })
+      # Extract Xpress Results
+      xpress_results <- data.frame(Variable = problemdata$colname, Value = xprs_getsolution(p))
 
-    # Get String Attributes
-    str_attributes <- lapply(xprs_getstringattributes(),
-                             function(x) { getstringattrib(p, x) })
+      # Get Double Attributes
+      dbl_attributes <- lapply(xprs_getdoubleattributes(),
+                               function(x) { getdblattrib(p, x) })
 
-    # Get Integer Controls
-    int_controls <- lapply(xprs_getintcontrols(),
-                           function(x) { getintcontrol(p, x) })
+      # Get Integer Attritubes
+      int_attributes <- lapply(xprs_getintattributes(),
+                               function(x) { getintattrib(p, x) })
 
-    # Get Double Controls
-    dbl_controls <- lapply(xprs_getdoublecontrols(),
-                           function(x) { getdblcontrol(p, x) })
+      # Get String Attributes
+      str_attributes <- lapply(xprs_getstringattributes(),
+                               function(x) { getstringattrib(p, x) })
 
-    # String Control
-    str_controls <- lapply(xprs_getstringcontrols(),
-                           function(x) { getstringcontrol(p, x) })
+      # Get Integer Controls
+      int_controls <- lapply(xprs_getintcontrols(),
+                             function(x) { getintcontrol(p, x) })
 
-    # Fix Global Variables
-    xpress_verison <- packageVersion('xpress') |> as.character()
-    if (compareVersion(xpress_verison |> as.character(),'9.2.5') >= 0){
-      xpress::fixmipentities(prob = p, options = 0)
-    } else {
-      xpress::fixglobals(prob = p, options = 0)
+      # Get Double Controls
+      dbl_controls <- lapply(xprs_getdoublecontrols(),
+                             function(x) { getdblcontrol(p, x) })
+
+      # String Control
+      str_controls <- lapply(xprs_getstringcontrols(),
+                             function(x) { getstringcontrol(p, x) })
+
+      # Fix Global Variables
+      xpress_verison <- packageVersion('xpress') |> as.character()
+      if (compareVersion(xpress_verison |> as.character(),'9.2.5') >= 0){
+        xpress::fixmipentities(prob = p, options = 0)
+      } else {
+        xpress::fixglobals(prob = p, options = 0)
+      }
+
+      # Rerun Problem As Linear Model For Sensitivity Analysis
+      xpress::lpoptimize(p)
+
+      # Extract LP Solution
+      lp_solution <- xpress::getlpsol(prob = p)
+
+      # Extract Sensitivity Ranges
+      obj_sensitivity <- xpress::objsa(p, 0:(int_attributes$COLS-1))
+      bnd_sensitivity <- xpress::bndsa(p, 0:(int_attributes$COLS-1))
+      rhs_sensitivy <- xpress::rhssa(prob = p, rowind = 0:((constraints$rhs |> length())-1))
+
+      # Add Variable Names to Sensitivity Ranges
+      obj_sensitivity_df <- data.frame(Variable = problemdata$colname,
+                                       lower = obj_sensitivity$lower,
+                                       upper = obj_sensitivity$upper)
+      bnd_sensitivity_df <- data.frame(Variable = problemdata$colname,
+                                       lblower = bnd_sensitivity$lblower,
+                                       lbupper = bnd_sensitivity$lbupper,
+                                       ublower = bnd_sensitivity$ublower,
+                                       ubupper = bnd_sensitivity$ubupper)
+
+      # Get Reduced Costs
+      reduced_costs <- data.frame(Variable = problemdata$colname,
+                                  value = lp_solution$djs[1:(problemdata$colname |> length())])
+
+      # Create List of All Attributes
+      model_attributes <- list(int_attributes = int_attributes,
+                               dbl_attributes = dbl_attributes,
+                               str_attributes = str_attributes,
+                               int_controls = int_controls,
+                               dbl_controls = dbl_controls,
+                               str_controls = str_controls)
+
+      # Get Xpress Status
+      xpress_status <- int_attributes$MIPSTATUS |> get_xpress_status()
+
+      # Create Solution List
+      xpress_solution <- ompr::new_solution(model = model,
+                                            objective_value = dbl_attributes$OBJVAL,
+                                            status = (int_attributes$MIPSTATUS |> get_ompr_status()),
+                                            solution = xpress_results,
+                                            additional_solver_output = list(obj_sensitivity = obj_sensitivity_df,
+                                                                            bnd_sensitivity = bnd_sensitivity_df,
+                                                                            rhs_sensitivity = rhs_sensitivy,
+                                                                            reduced_costs = reduced_costs,
+                                                                            model_attributes = model_attributes,
+                                                                            lp_solution = lp_solution,
+                                                                            xpress_status = xpress_status,
+                                                                            xpress_problem = p))
+
+      # Return Solution
+      return(xpress_solution)
+
     }
-
-    # Rerun Problem As Linear Model For Sensitivity Analysis
-    xpress::lpoptimize(p)
-
-    # Extract LP Solution
-    lp_solution <- xpress::getlpsol(prob = p)
-
-    # Extract Sensitivity Ranges
-    obj_sensitivity <- xpress::objsa(p, 0:(int_attributes$COLS-1))
-    bnd_sensitivity <- xpress::bndsa(p, 0:(int_attributes$COLS-1))
-    rhs_sensitivy <- xpress::rhssa(prob = p, rowind = 0:((constraints$rhs |> length())-1))
-
-    # Get Xpress Status
-    xpress_status <- int_attributes$MIPSTATUS |> get_xpress_status()
-
-    # Create Solution List
-    xpress_solution <- ompr::new_solution(model = model,
-                                          objective_value = dbl_attributes$OBJVAL,
-                                          status = (int_attributes$MIPSTATUS |> get_ompr_status()),
-                                          solution = xpress_results,
-                                          additional_solver_output = list(obj_sensitivity = obj_sensitivity,
-                                                                          bnd_sensitivity = bnd_sensitivity,
-                                                                          rhs_sensitivity = rhs_sensitivy,
-                                                                          lp_solution = lp_solution,
-                                                                          xpress_status = xpress_status,
-                                                                          xpress_problem = p))
-
-    # Return Solution
-    return(xpress_solution)
 
   }
 
