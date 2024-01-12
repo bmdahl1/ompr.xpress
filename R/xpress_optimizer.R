@@ -329,8 +329,8 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
                              function(x) { getstringcontrol(p, x) })
 
       # Fix Global Variables
-      xpress_verison <- utils::packageVersion('xpress') |> as.character()
-      if (utils::compareVersion(xpress_verison |> as.character(),'9.2.5') >= 0){
+      xpress_verison <- packageVersion('xpress') |> as.character()
+      if (compareVersion(xpress_verison |> as.character(),'9.2.5') >= 0){
         xpress::fixmipentities(prob = p, options = 0)
       } else {
         xpress::fixglobals(prob = p, options = 0)
@@ -374,7 +374,7 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
 
       # Create Solution List
       xpress_solution <- ompr::new_solution(model = model,
-                                            objective_value = dbl_attributes$OBJVAL,
+                                            objective_value = dbl_attributes$MIPOBJVAL,
                                             status = (int_attributes$MIPSTATUS |> get_ompr_status()),
                                             solution = xpress_results,
                                             additional_solver_output = list(obj_sensitivity = obj_sensitivity_df,
