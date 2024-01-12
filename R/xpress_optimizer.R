@@ -195,6 +195,7 @@ xpress_apply_control_params <- function(prob, control_params){
 #'
 #' @import ompr
 #' @import xpress
+#' @import utils
 #'
 #' @details
 #' The Xpress solver offers an extraordinarily wide range of control settings. The full list of
@@ -224,7 +225,7 @@ xpress_apply_control_params <- function(prob, control_params){
 #'
 #'
 #' }
-xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem'), ...){
+xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', verbose = TRUE), ...){
 
   # Check For Xpress Package
   if (!requireNamespace("xpress", quietly = TRUE)){
@@ -288,6 +289,9 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem'), ..
     # Set Problem Sense
     chgobjsense(p, obj_sense)
 
+    # Set Output to Console
+    if (control$verbose){setoutput(p)}
+
     # Run Xpress Optimization
     summary(xpress::xprs_optimize(p))
 
@@ -325,8 +329,8 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem'), ..
                              function(x) { getstringcontrol(p, x) })
 
       # Fix Global Variables
-      xpress_verison <- packageVersion('xpress') |> as.character()
-      if (compareVersion(xpress_verison |> as.character(),'9.2.5') >= 0){
+      xpress_verison <- utils::packageVersion('xpress') |> as.character()
+      if (utils::compareVersion(xpress_verison |> as.character(),'9.2.5') >= 0){
         xpress::fixmipentities(prob = p, options = 0)
       } else {
         xpress::fixglobals(prob = p, options = 0)
@@ -344,10 +348,10 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem'), ..
       rhs_sensitivy <- xpress::rhssa(prob = p, rowind = 0:((constraints$rhs |> length())-1))
 
       # Add Variable Names to Sensitivity Ranges
-      obj_sensitivity_df <- data.frame(Variable = problemdata$colname,
+      obj_sensitivity_df <- data.frame(Variable = xpress::getnamelist(p,2,0,(obj_sensitivity$lower |> length()-1)),
                                        lower = obj_sensitivity$lower,
                                        upper = obj_sensitivity$upper)
-      bnd_sensitivity_df <- data.frame(Variable = problemdata$colname,
+      bnd_sensitivity_df <- data.frame(Variable = xpress::getnamelist(p,2,0,(obj_sensitivity$lower |> length()-1)),
                                        lblower = bnd_sensitivity$lblower,
                                        lbupper = bnd_sensitivity$lbupper,
                                        ublower = bnd_sensitivity$ublower,

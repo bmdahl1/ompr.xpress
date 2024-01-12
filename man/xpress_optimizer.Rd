@@ -4,7 +4,10 @@
 \alias{xpress_optimizer}
 \title{Run the Xpress solver through the OMPR interface.}
 \usage{
-xpress_optimizer(control = list(problem_name = "Xpress Problem"), ...)
+xpress_optimizer(
+  control = list(problem_name = "Xpress Problem", verbose = TRUE),
+  ...
+)
 }
 \arguments{
 \item{control}{a list of options passed to \code{xpress::xprs_optimize()}.

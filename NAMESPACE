@@ -2,4 +2,5 @@
 
 export(xpress_optimizer)
 import(ompr)
+import(utils)
 import(xpress)
