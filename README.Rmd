@@ -96,8 +96,6 @@ model_results <- model |>
 
 ```
 
-What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
-
 ```{r gt_table, echo=FALSE}
 
 # Output to GT Table
@@ -111,15 +109,30 @@ shift_schedule |>
   gt::gt() |> 
   gt::tab_options(table.align = 'left', 
                   table.font.size = 10) |> 
+  # Add Spanner Label
+    tab_spanner(
+    label = "Decision Variables",
+    columns = c(
+      START, ON_SHIFT
+    )
+  ) |> 
+  gt::cols_label(
+    Shift.Time = 'Shift Time',
+    START = "Starting",
+    ON_SHIFT = "On Shift"
+  ) |> 
   as_raw_html()
 
 ```
 
-You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date. `devtools::build_readme()` is handy for this.
+```{r plot, echo = FALSE, fig.height = 3, fig.width = 5, fig.align = "center"}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "75%"
+)
 
-You can also embed plots, for example:
-
-```{r pressure, echo = FALSE}
 
 # Plot Required vs. On Shift
 plot(x = 1:6, 
@@ -140,5 +153,3 @@ legend('topright',
        cex = .75)
 
 ```
-
-In that case, don't forget to commit and push the resulting figure files, so they display on GitHub and CRAN.
