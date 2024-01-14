@@ -125,7 +125,7 @@ shift_schedule |>
 
 ```
 
-```{r plot, echo = FALSE, fig.height = 3, fig.width = 5, fig.align = "center"}
+```{r plot, echo = FALSE, fig.height = 3, fig.width = 6, fig.align = "center"}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
@@ -142,6 +142,10 @@ plot(x = 1:6,
      col = 'black',
      xlab = 'Shift Number',
      ylab = 'On Shift',
+      cex.main=.75, #change font size of title
+     cex.sub=.75, #change font size of subtitle
+     cex.lab=.75, #change font size of axis labels
+     cex.axis=.75, #change font size of axis text  
      main = 'Shift Schedule - On Shift vs. Required')
 lines(x = 1:6, y = shift_schedule$ON_SHIFT, type = 'l', col = 'red')
 
