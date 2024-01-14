@@ -1,34 +1,61 @@
----
-title: "Github Readme"
-author: "Brandon Dahl"
-date: "2024-01-14"
-output: html_document
----
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+# ompr.xpress
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+The goal of ompr.xpress is to …
+
+## Installation
+
+You can install the development version of ompr.xpress from
+[GitHub](https://github.com/) with:
+
+``` r
+# install.packages("devtools")
+devtools::install_github("bmdahl1/ompr.xpress")
 ```
 
-## Xpress Optimization with OMPR
+## Example
 
-The ompr.xpress package allows the use of the FICO Xpress optimizer to solve mixed integer and linear programming problems.
+This is a basic example which shows you how to solve a common problem:
 
-A FICO Xpress installation and package installation are required for ompr.xpress to function. The `xpress` package is not available on CRAN, but is rather included
+``` r
+library(ompr.xpress)
+#> Loading required package: xpress
+#> 
+#> Attaching package: 'xpress'
+#> The following object is masked from 'package:stats':
+#> 
+#>     optimize
+#> The following objects are masked from 'package:base':
+#> 
+#>     license, save, scale
+## basic example coded
+```
 
-Those can be downloaded at the following location:
+What is special about using `README.Rmd` instead of just `README.md`?
+You can include R chunks like so:
 
-[FICO® Xpress Community License \| FICO](https://www.fico.com/en/fico-xpress-community-license)
-
-```{r cars}
+``` r
 summary(cars)
+#>      speed           dist       
+#>  Min.   : 4.0   Min.   :  2.00  
+#>  1st Qu.:12.0   1st Qu.: 26.00  
+#>  Median :15.0   Median : 36.00  
+#>  Mean   :15.4   Mean   : 42.98  
+#>  3rd Qu.:19.0   3rd Qu.: 56.00  
+#>  Max.   :25.0   Max.   :120.00
 ```
 
-## Install
+You’ll still need to render `README.Rmd` regularly, to keep `README.md`
+up-to-date. `devtools::build_readme()` is handy for this.
 
 You can also embed plots, for example:
 
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
+<img src="man/figures/README-pressure-1.png" width="100%" />
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+In that case, don’t forget to commit and push the resulting figure
+files, so they display on GitHub and CRAN.
