@@ -67,7 +67,8 @@ shift_blank <- data.frame('Shift.Time' = c('0000 - 0400',
 shift_blank |> 
   gt::gt() |> 
   gt::tab_options(table.align = 'left',
-                  table.font.size = '10')
+                  table.font.size = '10') |> 
+  as_raw_html()
 
 ```
 
@@ -109,7 +110,8 @@ shift_schedule <- shift_blank |>
 shift_schedule |> 
   gt::gt() |> 
   gt::tab_options(table.align = 'left', 
-                  table.font.size = 10)
+                  table.font.size = 10) |> 
+  as_raw_html()
 
 ```
 
