@@ -11,16 +11,32 @@ knitr::opts_chunk$set(
   fig.path = "man/figures/README-",
   out.width = "100%"
 )
+
+# Import Extra Libraries
+library(gt)
+library(dplyr)
+
 ```
 
-# ompr.xpress
+## Xpress Optimization with OMPR
 
 <!-- badges: start -->
+
 <!-- badges: end -->
 
-The goal of ompr.xpress is to ...
+The `ompr.xpress` package allows the use of the FICO Xpress optimizer to solve mixed integer and linear programming problems with the OMPR package.
 
 ## Installation
+
+A FICO Xpress installation and `xpress` package installation are required for `ompr.xpress` to function. The `xpress` package is not available on CRAN, but is rather included with downloads of the Xpress solver from FICO for Xpress verions greater than 8.13.
+
+If a commercial licensed installation is not already available to you, a community version can be download from the link below. Community license is limited to problem with rows + columns \<= 5000.
+
+[FICO® Xpress Community License \| FICO](https://www.fico.com/en/fico-xpress-community-license)
+
+Installation instructions for the `xpress` package are located inside the directory of the Xpress installation. Instructions from FICO are at the link below:
+
+[Installation of the R and Python packages (fico.com)](https://www.fico.com/fico-xpress-optimization/docs/dms2021-04/installguide/dhtml/chapinst1_sec_secrpython.html?scroll=ssecr)
 
 You can install the development version of ompr.xpress from [GitHub](https://github.com/) with:
 
@@ -31,17 +47,70 @@ devtools::install_github("bmdahl1/ompr.xpress")
 
 ## Example
 
-This is a basic example which shows you how to solve a common problem:
+We can use a simple police dispatch shift scheduling problem:
+
+A police department must employ a specified number of dispatchers for all 4-hour shifts throughout the day. Each dispatcher must work an 8-hour shift
+
+```{r}
+#| echo: false
+
+# Create GT Table
+shift_blank <- data.frame('Shift.Time' = c('0000 - 0400',
+                                           '0400 - 0800',
+                                           '0800 - 1200',
+                                           '1200 - 1600',
+                                           '1600 - 2000',
+                                           '2000 - 0000'),
+                          'Required' = c(6,7,13,13,9,6))
+
+# Show Table
+shift_blank |> 
+  gt::gt() |> 
+  gt::tab_options(table.align = 'left',
+                  table.font.size = '10')
+
+```
 
 ```{r example}
-library(ompr.xpress)
-## basic example coded
+suppressWarnings(suppressMessages(library(ompr.xpress)))
+suppressWarnings(suppressMessages(library(ompr)))
+suppressWarnings(suppressMessages(library(xpress)))
+
+# Set Shift Parameters
+shift_required <-  c(6,7,13,13,9,6)
+n_shifts <- 6
+
+# Create OMPR Model
+model <- MIPModel() |> 
+  add_variable(start_shift[s], type = 'integer', s = 1:n_shifts, lb = 0) |> 
+  add_variable(on_shift[s], type = 'continuous', s = 1:n_shifts, lb = 0) |> 
+  add_constraint(on_shift[s] == (start_shift[s] + start_shift[s-1]), s = 2:n_shifts) |>
+  add_constraint(on_shift[s] == start_shift[s] + start_shift[n_shifts], s = 1) |> 
+  add_constraint(on_shift[s] >= shift_required[s], s = 1:n_shifts) |> 
+  set_objective(sum_over(start_shift[s], s = 1:n_shifts), sense = 'min')
+
+# Solve with Xpress
+model_results <- model |> 
+  solve_model(xpress_optimizer())
+
 ```
 
 What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
 
-```{r cars}
-summary(cars)
+```{r gt_table, echo=FALSE}
+
+# Output to GT Table
+shift_schedule <- shift_blank |> 
+  mutate(START = model_results$solution[[2]][1:6],
+         ON_SHIFT = model_results$solution[[2]][7:12]) |> 
+  relocate(Required, .after = everything())
+
+# Create GT Table
+shift_schedule |> 
+  gt::gt() |> 
+  gt::tab_options(table.align = 'left', 
+                  table.font.size = 10)
+
 ```
 
 You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date. `devtools::build_readme()` is handy for this.
@@ -49,7 +118,25 @@ You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-da
 You can also embed plots, for example:
 
 ```{r pressure, echo = FALSE}
-plot(pressure)
+
+# Plot Required vs. On Shift
+plot(x = 1:6, 
+     y = shift_schedule$Required, 
+     type = 'l', 
+     lty = 'dashed', 
+     col = 'black',
+     xlab = 'Shift Number',
+     ylab = 'On Shift',
+     main = 'Shift Schedule - On Shift vs. Required')
+lines(x = 1:6, y = shift_schedule$ON_SHIFT, type = 'l', col = 'red')
+
+# Create Legend
+legend('topright',
+       legend = c('Required','On Shift'),
+       col = c('black','red'),
+       lty = c('dashed','solid'),
+       cex = .75)
+
 ```
 
 In that case, don't forget to commit and push the resulting figure files, so they display on GitHub and CRAN.
