@@ -382,6 +382,7 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
     var_names <- ompr::variable_keys(model)
     upper_bounds <- ompr::variable_bounds(model)[['upper']]
     lower_bounds <- ompr::variable_bounds(model)[['lower']]
+    col_types <- ompr::variable_types(model) |> as.character()
     obj_sense <- switch(model$objective$sense, 'max' = -1L, 'min' = 1L,
                         stop('Objective sense not valid'))
 
@@ -395,9 +396,7 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
     problemdata$A <- constraints$matrix
 
     # Get Variable Types
-    problemdata$columntypes <- (lapply(model$variable_types, FUN = xpress_col_type_conversion) |>
-                                    lapply(var_names, FUN = xpress_col_type_fill, conversion_list = _) |>
-                                    unlist())
+    problemdata$columntypes <- sapply(col_types, xpress_col_type_conversion) |> unname()
 
     # Get problemdata Types
     problemdata$rowtype <- (lapply(X = constraints$sense, FUN = xpress_sense_conversion) |> unlist())
