@@ -23,6 +23,8 @@ To do:
 # Import Libraries
 library(ompr)
 library(xpress)
+library(dplyr)
+library(tidyr)
 
 # Clear Out Variables
 rm(list = ls())
@@ -510,7 +512,7 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
       # Get Xpress Status
       xpress_status <- int_attributes$MIPSTATUS |> get_xpress_status()
     
-    } else if (status == 'infeasible'){
+    } else if (sol_status == 'infeasible'){
       
       # Get Integer Attributes from Presolve INdex
       get_inf_index <- xpress::getintattrib(prob = p, attrib = xpress:::PRESOLVEINDEX)
