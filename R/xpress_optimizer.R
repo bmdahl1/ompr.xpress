@@ -371,6 +371,58 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
       # Get Xpress Status
       xpress_status <- int_attributes$MIPSTATUS |> get_xpress_status()
 
+    } else if (status == 'infeasible'){
+
+      # Get Integer Attributes from Presolve INdex
+      get_inf_index <- xpress::getintattrib(prob = p, attrib = xpress:::PRESOLVEINDEX)
+
+      # Get Infeasible Row Data
+      inf_row <- xpress::getrows(prob = p, first = get_inf_index, last = get_inf_index)
+
+      # Get Column Names
+      inf_col_names <- sapply(X = inf_row$colind,
+                              FUN = \(x) xpress::getnamelist(prob = p, first = x, last = x, type = 2))
+
+      # Get Right Hand Side
+      inf_row_rhs <- xpress::getrhs(prob = p, first = get_inf_index, last = get_inf_index)
+
+      # Set Initial Equation
+      row_equation <- ''
+
+      # Construct Equation
+      for (w in 1:length(inf_col_names)){
+
+        if (w == 1){
+
+          # Build Column Variable
+          col_var <- switch(inf_row$colcoef[w] |> as.character(),
+                            '1' = inf_col_names[w],
+                            '-1' = paste0(' - ', inf_col_names[w]),
+                            paste0(inf_col_names[w]))
+
+        } else {
+
+          # Build Column Variable
+          col_var <- switch(inf_row$colcoef[w] |> as.character(),
+                            '1' = paste0(' + ', inf_col_names[w]),
+                            '-1' = paste0(' - ', inf_col_names[w]),
+                            paste0(inf_col_names[w]))
+
+        }
+
+        # Build Equation
+        row_equation <- paste0(row_equation, col_var)
+
+      }
+
+      # Finish Equation
+      row_equation <- paste0(row_equation, ' = ', inf_row_rhs)
+
+    }
+
+    # Build Solution List
+    if (sol_status == 'optimal'){
+
       # Create Solution List
       xpress_solution <- ompr::new_solution(model = model,
                                             objective_value = dbl_attributes$MIPOBJVAL,
@@ -385,10 +437,20 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
                                                                             xpress_status = xpress_status,
                                                                             xpress_problem = p))
 
-      # Return Solution
-      return(xpress_solution)
+    } else {
+
+      # Create Solution List
+      xpress_solution <- ompr::new_solution(model = model,
+                                            objective_value = NA_real_,
+                                            status = xpress::getintattrib(p,xpress:::MIPSTATUS) |> get_ompr_status(),
+                                            solution = data.frame(),
+                                            additional_solver_output = list(infeasible_row = row_equation,
+                                                                            xpress_problem = p))
+
 
     }
+
+    return(xpress_solution)
 
   }
 
