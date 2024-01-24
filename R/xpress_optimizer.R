@@ -306,7 +306,7 @@ run_inf_analysis <- function(prob){
     inf_col_index <- get_inf_index - (tot_rows + tot_spare_rows) - 1
 
     # Get Column Name
-    inf_equation <- xpress::getname(prob = prob, first = inf_col_index, last = inf_col_index, type = 2)
+    inf_equation <- xpress::getnamelist(prob = prob, first = inf_col_index, last = inf_col_index, type = 2)
 
     # Create List
     inf_analysis <- list(inf_col_index = inf_col_index)
