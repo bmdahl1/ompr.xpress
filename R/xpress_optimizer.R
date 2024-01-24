@@ -236,62 +236,92 @@ xpress_get_params <- function(prob){
 #'
 run_inf_analysis <- function(prob){
 
+  # Create Infeasability List
+  inf_analysis <- list()
+
   # Get Integer Attributes from Presolve INdex
   get_inf_index <- xpress::getintattrib(prob = prob, attrib = xpress:::PRESOLVEINDEX)
 
-  # Get Infeasible Row Data
-  inf_row <- xpress::getrows(prob = prob, first = get_inf_index, last = get_inf_index)
+  # Get Total Size of Problem
+  tot_rows <- xpress::getintattrib(prob = prob, attrib = xpress:::ROWS)
+  tot_spare_rows <- xpress::getintattrib(prob = prob, attrib = xpress:::SPAREROWS)
+  tot_cols <- xpress::getintattrib(prob = prob, attrib = xpress:::COLS)
 
-  # Get Column Names
-  inf_col_names <- sapply(X = inf_row$colind,
-                          FUN = \(x) xpress::getnamelist(prob = prob, first = x, last = x, type = 2))
+  # Check For Row or Columm Indice
+  row_index_bool <- get_inf_index <= (tot_rows + tot_spare_rows)
 
-  # Get Right Hand Side
-  inf_row_rhs <- xpress::getrhs(prob = prob, first = get_inf_index, last = get_inf_index)
+  # Perform Presolve Infease Analysis
+  if (row_index_bool){
 
-  # Set Initial Equation
-  row_equation <- ''
+    # Get Infeasible Row Data
+    inf_row <- xpress::getrows(prob = prob, first = get_inf_index, last = get_inf_index)
 
-  # Construct Equation
-  for (w in 1:length(inf_col_names)){
+    # Get Column Names
+    inf_col_names <- sapply(X = inf_row$colind,
+                            FUN = \(x) xpress::getnamelist(prob = prob, first = x, last = x, type = 2))
 
-    if (w == 1){
+    # Get Right Hand Side
+    inf_row_rhs <- xpress::getrhs(prob = prob, first = get_inf_index, last = get_inf_index)
 
-      # Build Column Variable
-      col_var <- switch(inf_row$colcoef[w] |> as.character(),
-                        '1' = inf_col_names[w],
-                        '-1' = paste0(' - ', inf_col_names[w]),
-                        paste0(inf_col_names[w]))
+    # Set Initial Equation
+    row_equation <- ''
 
-    } else {
+    # Construct Equation
+    for (w in 1:length(inf_col_names)){
 
-      # Build Column Variable
-      col_var <- switch(inf_row$colcoef[w] |> as.character(),
-                        '1' = paste0(' + ', inf_col_names[w]),
-                        '-1' = paste0(' - ', inf_col_names[w]),
-                        paste0(inf_col_names[w]))
+      if (w == 1){
+
+        # Build Column Variable
+        col_var <- switch(inf_row$colcoef[w] |> as.character(),
+                          '1' = inf_col_names[w],
+                          '-1' = paste0(' - ', inf_col_names[w]),
+                          paste0(inf_col_names[w]))
+
+      } else {
+
+        # Build Column Variable
+        col_var <- switch(inf_row$colcoef[w] |> as.character(),
+                          '1' = paste0(' + ', inf_col_names[w]),
+                          '-1' = paste0(' - ', inf_col_names[w]),
+                          paste0(inf_col_names[w]))
+
+      }
+
+      # Build Equation
+      row_equation <- paste0(row_equation, col_var)
 
     }
 
-    # Build Equation
-    row_equation <- paste0(row_equation, col_var)
+    # Finish Equation
+    inf_equation <- paste0(row_equation, ' = ', inf_row_rhs)
+
+    # Create List
+    inf_analysis <- list(inf_row = inf_row,
+                         inf_col_names = inf_col_names,
+                         inf_row_rhw = inf_row_rhs)
+
+  } else {
+
+    # Get Column Index
+    inf_col_index <- get_inf_index - (tot_rows + tot_spare_rows) - 1
+
+    # Get Column Name
+    inf_equation <- xpress::getname(prob = prob, first = inf_col_index, last = inf_col_index, type = 2)
+
+    # Create List
+    inf_analysis <- list(inf_col_index = inf_col_index)
 
   }
 
-  # Finish Equation
-  row_equation <- paste0(row_equation, ' = ', inf_row_rhs)
-
   # Build List
   inf_list <- list(inf_index = get_inf_index,
-                   inf_row = inf_row,
-                   inf_col_names = inf_col_names,
-                   inf_row_rhs = inf_row_rhs,
-                   row_equation = row_equation)
+                   inf_analysis = inf_analysis,
+                   inf_equation = inf_equation)
+
 
   return(inf_list)
 
 }
-
 
 #'
 #' Run the Xpress solver through the OMPR interface.
