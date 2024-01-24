@@ -5,7 +5,7 @@
 \title{Run the Xpress solver through the OMPR interface.}
 \usage{
 xpress_optimizer(
-  control = list(problem_name = "Xpress Problem", verbose = TRUE),
+  control = list(problem_name = "Xpress Problem", verbose = TRUE, inf_analysis = TRUE),
   ...
 )
 }

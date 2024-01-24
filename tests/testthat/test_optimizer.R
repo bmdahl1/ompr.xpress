@@ -55,7 +55,7 @@ df_shift_params$CALLS_ENGLISH <- df_shift_params$AVG_CALLS*call_language[['Engli
 df_shift_params$CALLS_SPANISH <- df_shift_params$AVG_CALLS*call_language[['Spanish']]
 
 
-model_results_scheduling <- ompr::MIPModel() |>
+model <- ompr::MIPModel() |>
   # Create Decision Variables
   # Create English Full Time Decision Variables
   add_variable(ft_english_start[p], type = 'integer', p = 1:n_periods, lb = 0) |>
@@ -188,13 +188,31 @@ model_results_scheduling <- ompr::MIPModel() |>
   ompr::set_objective(sum_over(ft_english_tot_on_call[p]*df_shift_params$SHIFT_RATE[p]*2 +
                            pt_english_tot_on_call[p]*df_shift_params$SHIFT_RATE[p]*2 +
                            ft_spanish_tot_on_call[p]*df_shift_params$SHIFT_RATE[p]*2,
-                         p = 1:n_periods), sense = 'min') |>
+                         p = 1:n_periods), sense = 'min')
+
   # Run Optimizer
-  ompr::solve_model(xpress_optimizer())
+model_results_scheduling <- model |> ompr::solve_model(xpress_optimizer())
 
 # Check Results
 test_that("shift schedule model", {
   expect_equal(model_results_scheduling$objective_value, 5040)
+})
+
+#___________________________________________________________
+# Update Model To Enure Infeasiblity
+
+# Add Model Constraint
+model <- model |>
+  add_constraint(ft_english_start[p] <= 0, p = 1:2)
+
+# Run Model
+model_inf <- model |>
+  ompr::solve_model(xpress_optimizer())
+
+# Check Infeasibility
+test_that("infeasibility analysis", {
+  expect_equal(model_inf$additional_solver_output$inf_analysis$row_equation,
+               "ft_english_call_max[1] + pt_english_call_max[1] = 32")
 })
 
 
