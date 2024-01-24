@@ -321,6 +321,8 @@ run_inf_analysis <- function(prob){
 #' String Control Parameters
 #' https://www.fico.com/fico-xpress-optimization/docs/latest/solver/optimizer/HTML/XPRSsetstrcontrol.html
 #'
+#' Infeasibility Analysis
+#' https://www.fico.com/fico-xpress-optimization/docs/latest/solver/optimizer/HTML/chapter3.html
 #'
 #' @return A list returning all the results and parameters from the Xpress optimization run.
 #' @export

@@ -36,6 +36,9 @@ https://www.fico.com/fico-xpress-optimization/docs/latest/solver/optimizer/HTML/
 
 String Control Parameters
 https://www.fico.com/fico-xpress-optimization/docs/latest/solver/optimizer/HTML/XPRSsetstrcontrol.html
+
+Infeasibility Analysis
+https://www.fico.com/fico-xpress-optimization/docs/latest/solver/optimizer/HTML/chapter3.html
 }
 \examples{
 \dontrun{
