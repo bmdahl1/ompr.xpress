@@ -249,9 +249,10 @@ run_inf_analysis <- function(prob){
 
   # Check For Row or Columm Indice
   row_index_bool <- get_inf_index <= (tot_rows + tot_spare_rows)
+  row_bool <- get_inf_index >= 1
 
   # Perform Presolve Infease Analysis
-  if (row_index_bool){
+  if (all(row_index_bool,row_bool)){
 
     # Get Infeasible Row Data
     inf_row <- xpress::getrows(prob = prob, first = get_inf_index, last = get_inf_index)
@@ -300,16 +301,22 @@ run_inf_analysis <- function(prob){
                          inf_col_names = inf_col_names,
                          inf_row_rhw = inf_row_rhs)
 
-  } else {
+  } else if(row_bool){
 
     # Get Column Index
     inf_col_index <- get_inf_index - (tot_rows + tot_spare_rows) - 1
 
     # Get Column Name
-    inf_equation <- xpress::getnamelist(prob = prob, first = inf_col_index, last = inf_col_index, type = 2)
+    inf_equation <- xpress::getname(prob = prob, first = inf_col_index, last = inf_col_index, type = 2)
 
     # Create List
     inf_analysis <- list(inf_col_index = inf_col_index)
+
+  } else {
+
+    # Set Null Data
+    inf_analysis <- NA_character_
+    inf_equation <- NA_character_
 
   }
 
@@ -317,7 +324,6 @@ run_inf_analysis <- function(prob){
   inf_list <- list(inf_index = get_inf_index,
                    inf_analysis = inf_analysis,
                    inf_equation = inf_equation)
-
 
   return(inf_list)
 
