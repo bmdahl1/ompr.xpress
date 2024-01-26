@@ -6,6 +6,7 @@
 \usage{
 xpress_optimizer(
   control = list(problem_name = "Xpress Problem", verbose = TRUE, inf_analysis = TRUE),
+  heur_sol = data.frame(),
   ...
 )
 }

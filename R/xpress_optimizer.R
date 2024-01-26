@@ -356,7 +356,7 @@ add_mip_sol <- function(prob, heur_sol){
 
   # Extract Vectors
   solval <- heur_sol_tot$Value |> as.double()
-  col_index <- heu_sol_tot$COL_INDEX |> as.integer()
+  col_index <- heur_sol_tot$COL_INDEX |> as.integer()
 
   # Set Name
   name <- 'Heur_Sol'
@@ -414,7 +414,7 @@ add_mip_sol <- function(prob, heur_sol){
 #'
 #' }
 xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', verbose = TRUE,
-                                            inf_analysis = TRUE), ...){
+                                            inf_analysis = TRUE), heur_sol = data.frame(), ...){
 
   # Check For Xpress Package
   if (!requireNamespace("xpress", quietly = TRUE)){
@@ -481,7 +481,7 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
     if (control$verbose){setoutput(p)}
 
     # Add Presolution
-    if (exists('heur_sol')){
+    if (nrow(heur_sol) > 0){
 
       # Create MIP Soluiton
       add_mip_sol(prob = p,
