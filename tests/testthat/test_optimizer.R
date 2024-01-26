@@ -201,6 +201,21 @@ test_that("shift schedule model", {
 #___________________________________________________________
 # Update Model To Enure Infeasiblity
 
+# Extract Results
+opt_heur_sol <- model_results_scheduling$solution
+
+# Run Optimizer
+model_results_heur <- model |>
+  ompr::solve_model(xpress_optimizer(heur_sol = opt_heur_sol))
+
+# Check Results
+test_that("heuristic solution", {
+  expect_equal(model_results_heur$objective_value, 5040)
+})
+
+#___________________________________________________________
+# Update Model To Enure Infeasiblity
+
 # Add Model Constraint
 model <- model |>
   add_constraint(ft_english_start[p] <= 0, p = 1:2)

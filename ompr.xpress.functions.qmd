@@ -194,11 +194,11 @@ get_ompr_status <- function(x){
   temp_status <- switch(as.character(x),
                  "0" = "error",
                  "1" = "infeasible",
-                 "2" = "Optimal",
+                 "2" = "optimal",
                  "3" = "infeasible",
-                 "4" = "Optimal",
+                 "4" = "optimal",
                  "5" = "infeasible",
-                 "6" = "Optimal",
+                 "6" = "optimal",
                  "7" = "unbounded",
                  "error")
 
@@ -508,6 +508,50 @@ run_inf_analysis <- function(prob){
 
 ```
 
+#### Add MIP SOlution
+
+```{r}
+
+add_mip_sol <- function(prob, heur_sol){
+  
+  # Get Column Count
+  col_count <- xpress::getintattrib(prob, xpress:::COLS)
+  
+  # Get Column Names + Index
+  name_index <- data.frame(COL_NAME = xpress::getnamelist(prob,2,0,col_count-1))
+  
+  # Add Column Number Index
+  name_index['COL_INDEX'] <- (rownames(name_index) |> as.integer()) - 1
+  
+  # Add Index to Heur Solution DataFrame
+  heur_sol_tot <- merge(x = heur_sol,
+                        y = name_index,
+                        by.x = 'Variable',
+                        by.y = 'COL_NAME',
+                        all.x = TRUE,
+                        all.y = FALSE)
+  
+  # Extract Vectors
+  solval <- heur_sol_tot$Value |> as.double()
+  col_index <- heu_sol_tot$COL_INDEX |> as.integer()
+  
+  # Set Name
+  name <- 'Heur_Sol'
+  
+  # Add MIP Sol
+  if (length(col_index) < 0){
+    
+    xpress::addmipsol(prob = prob,
+                      solval = solval,
+                      colind = col_index,
+                      name = name)
+    
+  }
+  
+}
+
+```
+
 ### Optimize Function
 
 ```{r}
@@ -578,6 +622,15 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
 
     # Set Output to Console
     if (control$verbose){setoutput(p)}
+    
+    # Add Presolution
+    if (exists('heur_sol')){
+      
+      # Create MIP Soluiton
+      add_mip_sol(prob = p,
+                  heur_sol = heur_sol)
+      
+    }
 
     # Run Xpress Optimization
     summary(xpress::xprs_optimize(p))
@@ -586,7 +639,7 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
     sol_status <- getintattrib(p, xpress:::MIPSTATUS) |> get_ompr_status()
 
     # Run If Feasible
-    if (sol_status=='Optimal'){
+    if (sol_status=='optimal'){
 
       # Extract Xpress Results
       xpress_results <- data.frame(Variable = problemdata$colname, Value = xprs_getsolution(p))
@@ -643,7 +696,7 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
     #__________________________________________________________________________________
     # Build Solution List
 
-    if (sol_status == 'Optimal'){
+    if (sol_status == 'optimal'){
 
       # Create Solution List
       xpress_solution <- ompr::new_solution(model = model,

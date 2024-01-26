@@ -330,6 +330,50 @@ run_inf_analysis <- function(prob){
 }
 
 #'
+#' Add MIP Solution
+#'
+#' @param prob the Xpress problem object
+#' @param heur_sol A dataframe containing column variable names, and solutions
+#'
+add_mip_sol <- function(prob, heur_sol){
+
+  # Get Column Count
+  col_count <- xpress::getintattrib(prob, xpress:::COLS)
+
+  # Get Column Names + Index
+  name_index <- data.frame(COL_NAME = xpress::getnamelist(prob,2,0,col_count-1))
+
+  # Add Column Number Index
+  name_index['COL_INDEX'] <- (rownames(name_index) |> as.integer()) - 1
+
+  # Add Index to Heur Solution DataFrame
+  heur_sol_tot <- merge(x = heur_sol,
+                        y = name_index,
+                        by.x = 'Variable',
+                        by.y = 'COL_NAME',
+                        all.x = TRUE,
+                        all.y = FALSE)
+
+  # Extract Vectors
+  solval <- heur_sol_tot$Value |> as.double()
+  col_index <- heu_sol_tot$COL_INDEX |> as.integer()
+
+  # Set Name
+  name <- 'Heur_Sol'
+
+  # Add MIP Sol
+  if (length(col_index) < 0){
+
+    xpress::addmipsol(prob = prob,
+                      solval = solval,
+                      colind = col_index,
+                      name = name)
+
+  }
+
+}
+
+#'
 #' Run the Xpress solver through the OMPR interface.
 #'
 #' @param control a list of options passed to \code{xpress::xprs_optimize()}.
@@ -435,6 +479,15 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
 
     # Set Output to Console
     if (control$verbose){setoutput(p)}
+
+    # Add Presolution
+    if (exists('heur_sol')){
+
+      # Create MIP Soluiton
+      add_mip_sol(prob = p,
+                  heur_sol = heur_sol)
+
+    }
 
     # Run Xpress Optimization
     summary(xpress::xprs_optimize(p))
