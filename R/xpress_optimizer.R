@@ -362,7 +362,7 @@ add_mip_sol <- function(prob, heur_sol){
   name <- 'Heur_Sol'
 
   # Add MIP Sol
-  if (length(col_index) < 0){
+  if (length(col_index) > 0){
 
     xpress::addmipsol(prob = prob,
                       solval = solval,
@@ -414,7 +414,7 @@ add_mip_sol <- function(prob, heur_sol){
 #'
 #' }
 xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', verbose = TRUE,
-                                            inf_analysis = TRUE), heur_sol = data.frame(), ...){
+                                            inf_analysis = TRUE), ...){
 
   # Check For Xpress Package
   if (!requireNamespace("xpress", quietly = TRUE)){
@@ -428,7 +428,12 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
   function(model){
 
     # Get All Control Parameters
-    control <- c(control, ...)
+    control <- c(control, list(...))
+
+    # Add Heursitc Solution
+    if (!('heur_sol' %in% names(control))){
+      control$heur_sol <- data.frame()
+    }
 
     # Extract values from Model using OMPR functions
     obj <- ompr::objective_function(model)
@@ -481,11 +486,11 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
     if (control$verbose){setoutput(p)}
 
     # Add Presolution
-    if (nrow(heur_sol) > 0){
+    if (nrow(control$heur_sol) > 0){
 
       # Create MIP Soluiton
       add_mip_sol(prob = p,
-                  heur_sol = heur_sol)
+                  heur_sol = control$heur_sol)
 
     }
 
