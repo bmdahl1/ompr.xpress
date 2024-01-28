@@ -26,6 +26,14 @@ library(xpress)
 library(dplyr)
 library(tidyr)
 
+ # iisall(p)
+ #  status <- iisstatus(p)
+ #  print(status)
+ #  iis <- getiisdata(p, 1)
+ #  print("IIS Data:")
+ #  print(iis)
+
+
 # Clear Out Variables
 rm(list = ls())
 
@@ -528,7 +536,8 @@ add_mip_sol <- function(prob, heur_sol){
                         y = name_index,
                         by.x = 'Variable',
                         by.y = 'COL_NAME',
-                        all.x = TRUE,
+                        all = FALSE,
+                        all.x = FALSE,
                         all.y = FALSE)
   
   # Extract Vectors
@@ -755,17 +764,29 @@ model_results <- model |>
 
 ```
 
- 
+#### Test Run Heur Solution
 
 ```{r}
 
- # iisall(p)
- #  status <- iisstatus(p)
- #  print(status)
- #  iis <- getiisdata(p, 1)
- #  print("IIS Data:")
- #  print(iis)
+# Extract Model Solution
+model_heur_solution <- model_results$solution
 
-#     print(paste("Problem solved to status", getintattrib(p, xpress:::SOLSTATUS)))
-#   
+# Pass In Heuristic
+model_results_heur <- model |> 
+  solve_model(xpress_optimizer(heur_sol = model_heur_solution))
+
+```
+
+#### Pass in Heur Solution
+
+```{r}
+
+# Data
+bad_heur <- data.frame(Variable = rep(NA_character_,24),
+                       Value = rep(NA_real_,24))
+
+# Pass In Bad
+model_results_bad_heur <- model |> 
+  solve_model(xpress_optimizer(heur_sol = bad_heur))
+
 ```

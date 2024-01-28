@@ -10,7 +10,19 @@ xpress_optimizer(
 )
 }
 \arguments{
-\item{control}{a list of options passed to \code{xpress::xprs_optimize()}.
+\item{control}{a list of options passed to \code{xpress::xprs_optimize()}.}
+
+\item{problem_name}{An optional string parameter to name the Xpress problem.
+It's a required field so a default name is provided.}
+
+\item{verbose}{A boolean to set optimizer output to the R console.}
+
+\item{inf_analysis}{A boolean set whether to Xpress optimizer should report presolve
+infeasibility resutls (if found). Further details can be found in the
+details section under "Infeasibility Analysis"}
+
+\item{heur_solution}{An optional dataframe of model variables ("Variable") and their solutions ("Value") to
+for the Xpress solver to perform a local search on for MIP solutions.
 A complete list of control parameters are available in the details section.}
 }
 \value{
@@ -20,7 +32,7 @@ A list returning all the results and parameters from the Xpress optimization run
 Run the Xpress solver through the OMPR interface.
 }
 \details{
-The Xpress solver offers an extraordinarily wide range of control settings. The full list of
+The Xpress solver offers an extraordinarily wide range of control settings and feathers. The full list of
 controls available can be found within the links below. While the controls are broken out
 into integer, double, and string controls, there's no need to delineate this in your function
 call as that will be handled internally.
@@ -39,6 +51,23 @@ https://www.fico.com/fico-xpress-optimization/docs/latest/solver/optimizer/HTML/
 
 Infeasibility Analysis
 https://www.fico.com/fico-xpress-optimization/docs/latest/solver/optimizer/HTML/chapter3.html
+
+MIP Solution
+https://www.fico.com/fico-xpress-optimization/docs/latest/mosel/mosel_lang/dhtml/addmipsol.html
+
+Sensitivity Analysis
+Sensitivity analysis will be performed on LP and MIP problems. For MIP problems the integer varabiables be fixed
+after the mixed integer optimization run, and the problem will be rerun as a LP. Details on the Xpress functions
+used to perform sensitivity analysis are shown below:
+
+Sensitivity Analysis of the objective (objsa):
+https://www.fico.com/fico-xpress-optimization/docs/latest/solver/optimizer/R/HTML/objsa.html
+
+Sensitivity Analysis of the lower and upper bounds (bndsa):
+https://www.fico.com/fico-xpress-optimization/docs/latest/solver/optimizer/R/HTML/bndsa.html
+
+Sensitivity Analysis of the right-hand side (rhssa):
+https://www.fico.com/fico-xpress-optimization/docs/latest/solver/optimizer/R/HTML/rhssa.html
 }
 \examples{
 \dontrun{
