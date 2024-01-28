@@ -177,7 +177,7 @@ Sensitivity Analysis will be performed on both LP and MIP problems. When the pro
 #### Objective Function
 
 Returns upper and lower sensitivity ranges for specified objective function coefficients.\
-If the objective coefficients are varied within these ranges the current basis remains optimal and the reduced costs remain valid. \
+If the objective coefficients are varied within these ranges the current basis remains optimal and the reduced costs remain valid.\
 ([objsa (fico.com)](https://www.fico.com/fico-xpress-optimization/docs/latest/solver/optimizer/R/HTML/objsa.html))
 
 ```{r sensitivity_analysis_objsa, echo=FALSE}
@@ -187,7 +187,8 @@ model_results$additional_solver_output$obj_sensitivity |>
   gt::gt() |> 
   gt::tab_options(table.align = 'left', 
                   table.font.size = 10) |> 
-  gt::tab_header(title = 'Objective Function Sensitivity Analysis')
+  gt::tab_header(title = 'Objective Function Sensitivity Analysis') |> 
+  gt::as_raw_html()
 
 ```
 
@@ -205,7 +206,8 @@ model_results$additional_solver_output$bnd_sensitivity |>
   gt::gt() |> 
   gt::tab_options(table.align = 'left', 
                   table.font.size = 10) |> 
-  gt::tab_header(title = 'Upper and Lower Bounds Sensitivity Analysis')
+  gt::tab_header(title = 'Upper and Lower Bounds Sensitivity Analysis') |> 
+  gt::as_raw_html()
 
 
 ```
@@ -228,12 +230,13 @@ rhs_df |>
   gt::gt() |> 
   gt::tab_options(table.align = 'left', 
                   table.font.size = 10) |> 
-  gt::tab_header(title = 'Righ-Hnd Side Sensitivity Analysis')
+  gt::tab_header(title = 'Righ-Hnd Side Sensitivity Analysis') |> 
+  gt::as_raw_html()
 
 
 ```
 
-####  Row Duals
+#### Row Duals
 
 The dual values for the row constraints automatically generated from the LP optimize function.
 
@@ -248,7 +251,8 @@ data.frame(Duals = model_results$additional_solver_output$lp_solution$duals) |>
   gt::gt() |> 
   gt::tab_options(table.align = 'left', 
                   table.font.size = 10) |> 
-  gt::tab_header(title = 'Row Constraint Dual Values')
+  gt::tab_header(title = 'Row Constraint Dual Values') |> 
+  gt::as_raw_html()
 
 ```
 
@@ -271,6 +275,8 @@ reduced_costs |>
   gt::tab_options(table.align = 'left', 
                   table.font.size = 10) |> 
   gt::cols_label(Reduced.Costs = 'Reduced Costs') |> 
-  gt::tab_header(title = 'Decision Variable Reduced Costs')
+  gt::tab_header(title = 'Decision Variable Reduced Costs') |> 
+  gt::as_raw_html()
+
 
 ```
