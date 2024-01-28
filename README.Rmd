@@ -16,6 +16,9 @@ knitr::opts_chunk$set(
 library(gt)
 library(dplyr)
 
+# Turn Off Scientific Notation
+options(scipen = 999)
+
 ```
 
 ## Xpress Optimization with OMPR
@@ -49,7 +52,9 @@ devtools::install_github("bmdahl1/ompr.xpress")
 
 We can use a simple police dispatch shift scheduling problem:
 
-A police department must employ a specified number of dispatchers for all 4-hour shifts throughout the day. Each dispatcher must work an 8-hour shift
+A police department must employ a specified number of dispatchers for all 4-hour shifts throughout the day. Each dispatcher must work an 8-hour shift, and shifts from 2000 - 0800 earn a higher wage rate.
+
+The goal of the optimization will be to minimize total wage costs while supply all needed dispatchers.
 
 ```{r}
 #| echo: false
@@ -61,13 +66,16 @@ shift_blank <- data.frame('Shift.Time' = c('0000 - 0400',
                                            '1200 - 1600',
                                            '1600 - 2000',
                                            '2000 - 0000'),
-                          'Required' = c(6,7,13,13,9,6))
+                          'Required' = c(6,7,13,13,9,6),
+                          'Shift.Rate' = c(45,45,35,35,35,45))
 
 # Show Table
 shift_blank |> 
   gt::gt() |> 
   gt::tab_options(table.align = 'left',
                   table.font.size = '10') |> 
+  gt::fmt_currency(columns = 'Shift.Rate') |> 
+  gt::cols_label(Shift.Rate  = 'Shift Rate') |> 
   as_raw_html()
 
 ```
@@ -79,6 +87,7 @@ suppressWarnings(suppressMessages(library(xpress)))
 
 # Set Shift Parameters
 shift_required <-  c(6,7,13,13,9,6)
+shift_rate <- c(45, 45, 35, 35, 35, 45)
 n_shifts <- 6
 
 # Create OMPR Model
@@ -88,7 +97,7 @@ model <- MIPModel() |>
   add_constraint(on_shift[s] == (start_shift[s] + start_shift[s-1]), s = 2:n_shifts) |>
   add_constraint(on_shift[s] == start_shift[s] + start_shift[n_shifts], s = 1) |> 
   add_constraint(on_shift[s] >= shift_required[s], s = 1:n_shifts) |> 
-  set_objective(sum_over(start_shift[s], s = 1:n_shifts), sense = 'min')
+  set_objective(sum_over(on_shift[s]*shift_rate[s], s = 1:n_shifts), sense = 'min')
 
 # Solve with Xpress
 model_results <- model |> 
@@ -101,7 +110,8 @@ model_results <- model |>
 # Output to GT Table
 shift_schedule <- shift_blank |> 
   mutate(START = model_results$solution[[2]][1:6],
-         ON_SHIFT = model_results$solution[[2]][7:12]) |> 
+         ON_SHIFT = model_results$solution[[2]][7:12],
+         WAGES = ON_SHIFT*(row_number()*shift_rate)) |> 
   relocate(Required, .after = everything())
 
 # Create GT Table
@@ -113,13 +123,14 @@ shift_schedule |>
     tab_spanner(
     label = "Decision Variables",
     columns = c(
-      START, ON_SHIFT
+      START, ON_SHIFT, WAGES
     )
   ) |> 
   gt::cols_label(
     Shift.Time = 'Shift Time',
     START = "Starting",
-    ON_SHIFT = "On Shift"
+    ON_SHIFT = "On Shift",
+    WAGES = 'Total Hourly Wages'
   ) |> 
   as_raw_html()
 
@@ -142,6 +153,7 @@ plot(x = 1:6,
      col = 'black',
      xlab = 'Shift Number',
      ylab = 'On Shift',
+     ylim = c(0, 16),
       cex.main=.75, #change font size of title
      cex.sub=.75, #change font size of subtitle
      cex.lab=.75, #change font size of axis labels
@@ -155,5 +167,110 @@ legend('topright',
        col = c('black','red'),
        lty = c('dashed','solid'),
        cex = .75)
+
+```
+
+## Sensitivity Analysis
+
+Sensitivity Analysis will be performed on both LP and MIP problems. When the problem is MIP, then all integer variables will be fixed to the solution from the mixed integer solution, and the problem will be rerun as an LP to perform the sensitivity analysis.
+
+#### Objective Function
+
+Returns upper and lower sensitivity ranges for specified objective function coefficients.\
+If the objective coefficients are varied within these ranges the current basis remains optimal and the reduced costs remain valid. \
+([objsa (fico.com)](https://www.fico.com/fico-xpress-optimization/docs/latest/solver/optimizer/R/HTML/objsa.html))
+
+```{r sensitivity_analysis_objsa, echo=FALSE}
+
+# Extract Sensitivity Values
+model_results$additional_solver_output$obj_sensitivity |> 
+  gt::gt() |> 
+  gt::tab_options(table.align = 'left', 
+                  table.font.size = 10) |> 
+  gt::tab_header(title = 'Objective Function Sensitivity Analysis')
+
+```
+
+#### Lower and Upper Bounds
+
+Returns upper and lower sensitivity ranges for specified variables' lower and upper bounds.\
+If the bounds are varied within these ranges the current basis remains optimal and feasible.
+
+[bndsa (fico.com)](https://www.fico.com/fico-xpress-optimization/docs/latest/solver/optimizer/R/HTML/bndsa.html)
+
+```{r sensitivity_analysis_bndsa, echo=FALSE}
+
+# Extract Sensitivity Values
+model_results$additional_solver_output$bnd_sensitivity |> 
+  gt::gt() |> 
+  gt::tab_options(table.align = 'left', 
+                  table.font.size = 10) |> 
+  gt::tab_header(title = 'Upper and Lower Bounds Sensitivity Analysis')
+
+
+```
+
+#### Right-Hand Side
+
+Returns upper and lower sensitivity ranges for specified right hand side (RHS) function coefficients.\
+If the RHS coefficients are varied within these ranges the current basis remains optimal and the reduced costs remain valid.
+
+```{r sensitivity_analysis_rhs, echo=FALSE}
+
+# Create RHS Dataframe
+rhs_df <- data.frame(lower = model_results$additional_solver_output$rhs_sensitivity$lower,
+                     upper = model_results$additional_solver_output$rhs_sensitivity$upper) |> 
+  mutate(constraint = row_number()) |> 
+  relocate(constraint, .before = everything())
+
+# # Extract Sensitivity Values
+rhs_df |> 
+  gt::gt() |> 
+  gt::tab_options(table.align = 'left', 
+                  table.font.size = 10) |> 
+  gt::tab_header(title = 'Righ-Hnd Side Sensitivity Analysis')
+
+
+```
+
+####  Row Duals
+
+The dual values for the row constraints automatically generated from the LP optimize function.
+
+[getduals (fico.com)](https://www.fico.com/fico-xpress-optimization/docs/latest/solver/optimizer/R/HTML/getduals.html)
+
+```{r sensitivity_analysis_duals, echo=FALSE}
+
+# Extract Sensitivity Values
+data.frame(Duals = model_results$additional_solver_output$lp_solution$duals) |> 
+  mutate(Constraint = row_number()) |> 
+  relocate(Constraint, .before = everything()) |> 
+  gt::gt() |> 
+  gt::tab_options(table.align = 'left', 
+                  table.font.size = 10) |> 
+  gt::tab_header(title = 'Row Constraint Dual Values')
+
+```
+
+#### Reduced Costs
+
+The decision variable reduced costs are automatically generated from the LP optimize function.
+
+[calcreducedcosts (fico.com)](https://www.fico.com/fico-xpress-optimization/docs/latest/solver/optimizer/R/HTML/calcreducedcosts.html)
+
+```{r sensitivity_analysis_reduced_cost, echo=FALSE}
+
+# Create Dataframe
+reduced_costs <- data.frame(Variable = model_results$solution$Variable,
+                            Reduced.Costs = 
+                              model_results$additional_solver_output$lp_solution$djs[1:length(model_results$additional_solver_output$lp_solution$djs)-1])
+
+# Create GT
+reduced_costs |> 
+  gt::gt() |> 
+  gt::tab_options(table.align = 'left', 
+                  table.font.size = 10) |> 
+  gt::cols_label(Reduced.Costs = 'Reduced Costs') |> 
+  gt::tab_header(title = 'Decision Variable Reduced Costs')
 
 ```
