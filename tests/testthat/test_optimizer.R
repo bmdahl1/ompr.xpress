@@ -227,7 +227,7 @@ model_inf <- model |>
 # Check Infeasibility
 test_that("infeasibility analysis", {
   expect_equal(model_inf$additional_solver_output$inf_analysis$inf_equation,
-               "ft_english_call_max[1] + pt_english_call_max[1] = 32")
+               "ft_english_call_max[1] + pt_english_call_max[1] >= 32")
 })
 
 

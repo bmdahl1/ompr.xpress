@@ -42,6 +42,24 @@ get_ompr_status <- function(x){
   return(temp_status)
 
 }
+#' Convert Row From Alpha-Numeric to Symbol
+#'
+#' @param sense the Alpha-Numeric Row Type
+#'
+xpress_convert_row <- function(row_type){
+
+  # Get Conversion
+  row_conversion <- switch(row_type,
+                           'N' = 'is free',
+                           'L' = '<=',
+                           'E' = '=',
+                           'G' = '>=',
+                           'R' = 'Range',
+                           'Error')
+
+  return(row_conversion)
+
+}
 #' Get Row Type Conversion
 #'
 #' @param sense the math symbol representing the row constraint type
@@ -254,52 +272,12 @@ run_inf_analysis <- function(prob){
   # Perform Presolve Infease Analysis
   if (all(row_index_bool,row_bool)){
 
-    # Get Infeasible Row Data
-    inf_row <- xpress::getrows(prob = prob, first = get_inf_index, last = get_inf_index)
+    # Get Row Equation
+    inf_equation <- build_row_equation(prob = prob, row = get_inf_index)
 
-    # Get Column Names
-    inf_col_names <- sapply(X = inf_row$colind,
-                            FUN = \(x) xpress::getnamelist(prob = prob, first = x, last = x, type = 2))
-
-    # Get Right Hand Side
-    inf_row_rhs <- xpress::getrhs(prob = prob, first = get_inf_index, last = get_inf_index)
-
-    # Set Initial Equation
-    row_equation <- ''
-
-    # Construct Equation
-    for (w in 1:length(inf_col_names)){
-
-      if (w == 1){
-
-        # Build Column Variable
-        col_var <- switch(inf_row$colcoef[w] |> as.character(),
-                          '1' = inf_col_names[w],
-                          '-1' = paste0(' - ', inf_col_names[w]),
-                          paste0(inf_col_names[w]))
-
-      } else {
-
-        # Build Column Variable
-        col_var <- switch(inf_row$colcoef[w] |> as.character(),
-                          '1' = paste0(' + ', inf_col_names[w]),
-                          '-1' = paste0(' - ', inf_col_names[w]),
-                          paste0(inf_col_names[w]))
-
-      }
-
-      # Build Equation
-      row_equation <- paste0(row_equation, col_var)
-
-    }
-
-    # Finish Equation
-    inf_equation <- paste0(row_equation, ' = ', inf_row_rhs)
-
-    # Create List
-    inf_analysis <- list(inf_row = inf_row,
-                         inf_col_names = inf_col_names,
-                         inf_row_rhw = inf_row_rhs)
+    # Return Analysis
+    inf_analysis <- list(inf_equation = inf_equation,
+                         inf_analysis = NA_character_)
 
   } else if(row_bool){
 
@@ -328,6 +306,7 @@ run_inf_analysis <- function(prob){
   return(inf_list)
 
 }
+
 
 #'
 #' Add MIP Solution
@@ -373,6 +352,102 @@ add_mip_sol <- function(prob, heur_sol){
   }
 
 }
+#' Build Row Constraint Equation
+#'
+#' @param prob the Xpress problem object
+#' @param row an integer value of row value
+#'
+build_row_equation <- function(prob,row){
+
+  # Get Infeasible Row Data
+  row_data <- xpress::getrows(prob = prob, first = row, last = row)
+
+  # Get Column Names
+  row_col_names <- sapply(X = row_data$colind,
+                          FUN = \(x) xpress::getnamelist(prob = prob, first = x, last = x, type = 2))
+
+  # Get Row Type
+  row_type <- xpress::getrowtype(prob = prob, first = row, last = row)
+
+  # Convert Row Type
+  row_type_converted <- xpress_convert_row(row_type = row_type)
+
+  # Get Right Hand Side
+  row_rhs <- xpress::getrhs(prob = prob, first = row, last = row)
+
+  # Set Initial Equation
+  row_equation <- ''
+
+  # Construct Equation
+  for (w in 1:length(row_col_names)){
+
+    if (w == 1){
+
+      # Build Column Variable
+      col_var <- switch(row_data$colcoef[w] |> as.character(),
+                        '1' = row_col_names[w],
+                        '-1' = paste0(' - ', row_col_names[w]),
+                        paste0(' ',
+                               row_data$colcoef[w],'*', row_col_names[w]))
+
+    } else {
+
+      # Build Column Variable
+      col_var <- switch(row_data$colcoef[w] |> as.character(),
+                        '1' = paste0(' + ', row_col_names[w]),
+                        '-1' = paste0(' - ', row_col_names[w]),
+                        paste0(' ',
+                               row_data$colcoef[w],'*', row_col_names[w]))
+
+    }
+
+    # Build Equation
+    row_equation <- paste0(row_equation, col_var)
+
+  }
+
+  # Finish Equation
+  row_equation <- paste0(row_equation,' ',row_type_converted,' ', row_rhs)
+
+  return(row_equation)
+
+}
+#' Get Row Constraint Equations
+#'
+#' @param prob the Xpress problem object
+#' @param row an integer vector of rows to retreive data for.
+#'
+get_row_equations <- function(prob, rows){
+
+  # Get Row Count From Problem
+  row_count <- xpress::getintattrib(prob = prob, attrib = xpress:::ROWS)
+
+  # Filter Rows
+  rows_filtered <- rows[rows <= row_count]
+
+  # Create DataFrame
+  row_equation_df <- data.frame()
+
+  # Loop Through All Rows
+  for (r in 1:length(rows_filtered)){
+
+    # Get Row
+    row <- (rows_filtered[r] - 1) |> as.integer()
+
+    # Get Row Equation
+    temp_row_equation <- build_row_equation(prob = prob, row = row)
+
+    # Add to DataFrame
+    row_equation_df <- rbind(row_equation_df,
+                             data.frame(ROW = rows_filtered[r]-1, ROW_EQUATION = temp_row_equation))
+
+  }
+
+  # Return
+  return(row_equation_df)
+
+}
+
 #'
 #' Run the Xpress solver through the OMPR interface.
 #'
