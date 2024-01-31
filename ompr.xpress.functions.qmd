@@ -4,7 +4,6 @@ title: "ompr.xpress package functions"
 author: "Brandon Dahl"
 format: html
 editor: visual
-
 ---
 
 ## Import Libraries
@@ -575,7 +574,7 @@ run_inf_analysis <- function(prob){
     inf_col_index <- get_inf_index - (tot_rows + tot_spare_rows) - 1
     
     # Get Column Name
-    inf_equation <- xpress::getname(prob = prob, first = inf_col_index, last = inf_col_index, type = 2)
+    inf_equation <- xpress::getnamelist(prob = prob, first = inf_col_index, last = inf_col_index, type = 2)
     
     # Create List
     inf_analysis <- list(inf_col_index = inf_col_index)
@@ -650,7 +649,7 @@ add_mip_sol <- function(prob, heur_sol){
 ```{r}
 
 xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', verbose = TRUE,
-                                            inf_analysis = TRUE), ...){
+                                            inf_analysis = TRUE, add_row_contraints = TRUE), ...){
 
    # Check For Xpress Package
   if (!requireNamespace("xpress", quietly = TRUE)){
@@ -777,7 +776,12 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
       # Get Reduced Costs
       reduced_costs <- data.frame(Variable = problemdata$colname,
                                   value = lp_solution$djs[1:(problemdata$colname |> length())])
-
+      
+      # Get Row Constraints
+      if(control$add_row_contraints){
+        row_constraints <- get_row_equations(prob = p, rows = 1:(length(lp_solution$duals)))
+        lp_solution$row_constraints <- row_constraints
+      }
 
       # Get Xpress Status
       xpress_status <- model_attributes$int_attributes$MIPSTATUS |> get_xpress_status()

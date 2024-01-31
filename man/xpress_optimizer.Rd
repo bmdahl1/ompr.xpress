@@ -5,7 +5,8 @@
 \title{Run the Xpress solver through the OMPR interface.}
 \usage{
 xpress_optimizer(
-  control = list(problem_name = "Xpress Problem", verbose = TRUE, inf_analysis = TRUE),
+  control = list(problem_name = "Xpress Problem", verbose = TRUE, inf_analysis = TRUE,
+    add_row_contraints = TRUE),
   ...
 )
 }
@@ -22,7 +23,10 @@ infeasibility resutls (if found). Further details can be found in the
 details section under "Infeasibility Analysis"}
 
 \item{heur_solution}{An optional dataframe of model variables ("Variable") and their solutions ("Value") to
-for the Xpress solver to perform a local search on for MIP solutions.
+for the Xpress solver to perform a local search on for MIP solutions.}
+
+\item{add_row_constraints}{A boolean to indicate whether row constraint equations should be included in the LP solution.
+
 A complete list of control parameters are available in the details section.}
 }
 \value{

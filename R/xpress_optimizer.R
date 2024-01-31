@@ -460,6 +460,8 @@ get_row_equations <- function(prob, rows){
 #' details section under "Infeasibility Analysis"
 #' @param heur_solution An optional dataframe of model variables ("Variable") and their solutions ("Value") to
 #'  for the Xpress solver to perform a local search on for MIP solutions.
+#' @param add_row_constraints A boolean to indicate whether row constraint equations should be included in the LP solution.
+#'
 #' A complete list of control parameters are available in the details section.
 #'
 #' @import ompr
@@ -514,7 +516,7 @@ get_row_equations <- function(prob, rows){
 #'
 #' }
 xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', verbose = TRUE,
-                                            inf_analysis = TRUE), ...){
+                                            inf_analysis = TRUE, add_row_contraints = TRUE), ...){
 
   # Check For Xpress Package
   if (!requireNamespace("xpress", quietly = TRUE)){
@@ -642,6 +644,11 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
       reduced_costs <- data.frame(Variable = problemdata$colname,
                                   value = lp_solution$djs[1:(problemdata$colname |> length())])
 
+      # Get Row Constraints
+      if(control$add_row_contraints){
+        row_constraints <- get_row_equations(prob = p, rows = 1:(length(lp_solution$duals)))
+        lp_solution$row_constraints <- row_constraints
+      }
 
       # Get Xpress Status
       xpress_status <- model_attributes$int_attributes$MIPSTATUS |> get_xpress_status()
