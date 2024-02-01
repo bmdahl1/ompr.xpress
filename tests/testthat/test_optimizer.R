@@ -199,7 +199,7 @@ test_that("shift schedule model", {
 })
 
 #___________________________________________________________
-# Update Model To Enure Infeasiblity
+# Add Heusistic Solution
 
 # Extract Results
 opt_heur_sol <- model_results_scheduling$solution

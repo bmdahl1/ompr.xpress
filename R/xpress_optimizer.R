@@ -272,8 +272,11 @@ run_inf_analysis <- function(prob){
   # Perform Presolve Infease Analysis
   if (all(row_index_bool,row_bool)){
 
-    # Get Row Equation
-    inf_equation <- build_row_equation(prob = prob, row = get_inf_index)
+    # Get Row Equation Data Frame
+    inf_equation_df <- get_row_equations(prob = prob, rows = get_inf_index+1)
+
+    # Extract Only Equaiton
+    inf_equation <- inf_equation_df$ROW_EQUATION
 
     # Return Analysis
     inf_analysis <- list(inf_equation = inf_equation,
@@ -306,8 +309,6 @@ run_inf_analysis <- function(prob){
   return(inf_list)
 
 }
-
-
 #'
 #' Add MIP Solution
 #'
@@ -352,52 +353,49 @@ add_mip_sol <- function(prob, heur_sol){
   }
 
 }
-#' Build Row Constraint Equation
+#' Build Row Constraint Equation From Parts
 #'
-#' @param prob the Xpress problem object
-#' @param row an integer value of row value
+#' @param row_data The Xpress problem row information from xpress::getrows for a single row
+#' @param row_col_names A vector of all Xpress problem column names from xpress::getnamelist (will be filtered in function)
+#' @param row_types The Xpress problem row type from xpress::getrowtype that has been convereted
+#' from alpha-numeric to math symbols for a single row
+#' @param row_rhs  The Xpress problem row right-hand side from xpress::getrhs for a single row
 #'
-build_row_equation <- function(prob,row){
+#' @description
+#' This function constructs the row constraint equation from passing in all the various parts.
+#'
+#'
+build_row_equation_from_parts <- function(row_data, row_col_names, row_types, row_rhs){
 
-  # Get Infeasible Row Data
-  row_data <- xpress::getrows(prob = prob, first = row, last = row)
-
-  # Get Column Names
-  row_col_names <- sapply(X = row_data$colind,
-                          FUN = \(x) xpress::getnamelist(prob = prob, first = x, last = x, type = 2))
-
-  # Get Row Type
-  row_type <- xpress::getrowtype(prob = prob, first = row, last = row)
+  # Filter Row Column Names By Index
+  row_col_names_filtered <- row_col_names[(row_data$colind+1)]
 
   # Convert Row Type
-  row_type_converted <- xpress_convert_row(row_type = row_type)
-
-  # Get Right Hand Side
-  row_rhs <- xpress::getrhs(prob = prob, first = row, last = row)
+  row_type_converted <- xpress_convert_row(row_type = row_types)
 
   # Set Initial Equation
   row_equation <- ''
 
   # Construct Equation
-  for (w in 1:length(row_col_names)){
+  for (w in 1:length(row_col_names_filtered)){
 
     if (w == 1){
 
       # Build Column Variable
       col_var <- switch(row_data$colcoef[w] |> as.character(),
-                        '1' = row_col_names[w],
-                        '-1' = paste0(' - ', row_col_names[w]),
+                        '1' = row_col_names_filtered[w],
+                        '-1' = paste0(' - ', row_col_names_filtered[w]),
                         paste0(' ',
-                               row_data$colcoef[w],'*', row_col_names[w]))
+                               row_data$colcoef[w],'*', row_col_names_filtered[w]))
 
     } else {
 
       # Build Column Variable
       col_var <- switch(row_data$colcoef[w] |> as.character(),
-                        '1' = paste0(' + ', row_col_names[w]),
-                        '-1' = paste0(' - ', row_col_names[w]),
+                        '1' = paste0(' + ', row_col_names_filtered[w]),
+                        '-1' = paste0(' - ', row_col_names_filtered[w]),
                         paste0(' ',
-                               row_data$colcoef[w],'*', row_col_names[w]))
+                               row_data$colcoef[w],'*', row_col_names_filtered[w]))
 
     }
 
@@ -412,6 +410,7 @@ build_row_equation <- function(prob,row){
   return(row_equation)
 
 }
+
 #' Get Row Constraint Equations
 #'
 #' @param prob the Xpress problem object
@@ -425,23 +424,34 @@ get_row_equations <- function(prob, rows){
   # Filter Rows
   rows_filtered <- rows[rows <= row_count]
 
-  # Create DataFrame
-  row_equation_df <- data.frame()
+  # Get Problem Size
+  rows <- 1:(xpress::getintattrib(prob = prob, xpress:::ROWS)) - 1
+  cols <- 1:(xpress::getintattrib(prob = prob, xpress:::COLS)) - 1
 
-  # Loop Through All Rows
-  for (r in 1:length(rows_filtered)){
+  # Get All Row Data
+  row_data_list <- lapply(X = rows, FUN = \(x) xpress::getrows(prob = prob, first = x, last = x))
 
-    # Get Row
-    row <- (rows_filtered[r] - 1) |> as.integer()
+  # Get All Column Names
+  row_colnames <- xpress::getnamelist(prob = prob, first = cols[1], last = cols[length(cols)], type = 2)
 
-    # Get Row Equation
-    temp_row_equation <- build_row_equation(prob = prob, row = row)
+  # Get All Row Types
+  row_types <- xpress::getrowtype(prob = prob, first = rows[1], last = rows[length(rows)])
 
-    # Add to DataFrame
-    row_equation_df <- rbind(row_equation_df,
-                             data.frame(ROW = rows_filtered[r]-1, ROW_EQUATION = temp_row_equation))
+  # Convert All Row Types
+  row_types_converted <- sapply(X = row_types, FUN = xpress_convert_row) |> unname()
 
-  }
+  # Get All Row RHS
+  row_rhs <- xpress::getrhs(prob = prob, first = rows[1], last = rows[length(rows)])
+
+  # Compile List
+  row_equation_vector <- sapply(X = rows_filtered,
+                                FUN = \(x) build_row_equation_from_parts(row_data = row_data_list[[x]],
+                                                                         row_col_names = row_colnames,
+                                                                         row_types = row_types[[x]],
+                                                                         row_rhs = row_rhs[[x]]))
+
+  # Add to DataFrame
+  row_equation_df <- data.frame(ROW = rows_filtered-1, ROW_EQUATION = row_equation_vector)
 
   # Return
   return(row_equation_df)
