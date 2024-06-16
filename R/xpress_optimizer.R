@@ -171,9 +171,9 @@ xpress_apply_control_params <- function(prob, control_params){
     for (r in 1:length(filtered_x)){
 
       # Get Control Type, Parameter, Value
-      control_type <- xpress_control_params[[filtered_x[r] |> names()]]
-      control_parameter <- filtered_x[r] |> names()
-      control_value <- filtered_x[r] |> unlist() |> unname()
+      control_type <- xpress_control_params[[names(filtered_x[r])]]
+      control_parameter <- names(filtered_x[r])
+      control_value <- unname(unlist(filtered_x[r]))
 
       # Set Parameter
       if (control_type=='integer'){
@@ -181,21 +181,21 @@ xpress_apply_control_params <- function(prob, control_params){
         # Set Integer Parameter
         xpress::setintcontrol(prob = prob,
                               control = utils::getFromNamespace(control_parameter, "xpress"),
-                              control_value |> as.integer())
+                              as.integer(control_value))
 
       } else if(control_type == 'double'){
 
         # Set Double Parameter
         xpress::setdblcontrol(prob = prob,
                               control = utils::getFromNamespace(control_parameter, "xpress"),
-                              control_value |> as.double())
+                              as.double(control_value))
 
       } else if(control_type == 'string'){
 
         # Set String Parameter
         xpress::setstrcontrol(prob = prob,
                               control = utils::getFromNamespace(control_parameter, "xpress"),
-                              control_value |> as.character())
+                              as.character(control_value))
 
       }
 
@@ -257,7 +257,7 @@ run_inf_analysis <- function(prob){
   # Create Infeasability List
   inf_analysis <- list()
 
-  # Get Integer Attributes from Presolve INdex
+  # Get Integer Attributes from Presolve Index
   get_inf_index <- xpress::getintattrib(prob = prob, attrib = xpress:::PRESOLVEINDEX)
 
   # Get Total Size of Problem
@@ -269,13 +269,13 @@ run_inf_analysis <- function(prob){
   row_index_bool <- get_inf_index <= (tot_rows + tot_spare_rows)
   row_bool <- get_inf_index >= 1
 
-  # Perform Presolve Infease Analysis
+  # Perform Presolve Infeasability Analysis
   if (all(row_index_bool,row_bool)){
 
     # Get Row Equation Data Frame
     inf_equation_df <- get_row_equations(prob = prob, rows = get_inf_index+1)
 
-    # Extract Only Equaiton
+    # Extract Only Equation
     inf_equation <- inf_equation_df$ROW_EQUATION
 
     # Return Analysis
@@ -326,7 +326,7 @@ add_mip_sol <- function(prob, heur_sol){
   # Add Column Number Index
   name_index['COL_INDEX'] <- (rownames(name_index) |> as.integer()) - 1
 
-  # Add Index to Heur Solution DataFrame
+  # Add Index to Heuristic Solution DataFrame
   heur_sol_tot <- merge(x = heur_sol,
                         y = name_index,
                         by.x = 'Variable',
@@ -336,13 +336,13 @@ add_mip_sol <- function(prob, heur_sol){
                         all.y = FALSE)
 
   # Extract Vectors
-  solval <- heur_sol_tot$Value |> as.double()
-  col_index <- heur_sol_tot$COL_INDEX |> as.integer()
+  solval <- as.double(heur_sol_tot$Value)
+  col_index <- as.integer(heur_sol_tot$COL_INDEX)
 
   # Set Name
   name <- 'Heur_Sol'
 
-  # Add MIP Sol
+  # Add MIP Solution
   if (length(col_index) > 0){
 
     xpress::addmipsol(prob = prob,
@@ -382,7 +382,7 @@ build_row_equation_from_parts <- function(row_data, row_col_names, row_types, ro
     if (w == 1){
 
       # Build Column Variable
-      col_var <- switch(row_data$colcoef[w] |> as.character(),
+      col_var <- switch(as.character(row_data$colcoef[w]),
                         '1' = row_col_names_filtered[w],
                         '-1' = paste0(' - ', row_col_names_filtered[w]),
                         paste0(' ',
@@ -391,7 +391,7 @@ build_row_equation_from_parts <- function(row_data, row_col_names, row_types, ro
     } else {
 
       # Build Column Variable
-      col_var <- switch(row_data$colcoef[w] |> as.character(),
+      col_var <- switch(as.character(row_data$colcoef[w]),
                         '1' = paste0(' + ', row_col_names_filtered[w]),
                         '-1' = paste0(' - ', row_col_names_filtered[w]),
                         paste0(' ',
@@ -429,19 +429,27 @@ get_row_equations <- function(prob, rows){
   cols <- 1:(xpress::getintattrib(prob = prob, xpress:::COLS)) - 1
 
   # Get All Row Data
-  row_data_list <- lapply(X = rows, FUN = \(x) xpress::getrows(prob = prob, first = x, last = x))
+  row_data_list <- lapply(X = rows,
+                          FUN = \(x) xpress::getrows(prob = prob, first = x, last = x))
 
   # Get All Column Names
-  row_colnames <- xpress::getnamelist(prob = prob, first = cols[1], last = cols[length(cols)], type = 2)
+  row_colnames <- xpress::getnamelist(prob = prob,
+                                      first = cols[1],
+                                      last = cols[length(cols)], type = 2)
 
   # Get All Row Types
-  row_types <- xpress::getrowtype(prob = prob, first = rows[1], last = rows[length(rows)])
+  row_types <- xpress::getrowtype(prob = prob,
+                                  first = rows[1],
+                                  last = rows[length(rows)])
 
   # Convert All Row Types
-  row_types_converted <- sapply(X = row_types, FUN = xpress_convert_row) |> unname()
+  row_types_converted <- unname(sapply(X = row_types,
+                                       FUN = xpress_convert_row))
 
   # Get All Row RHS
-  row_rhs <- xpress::getrhs(prob = prob, first = rows[1], last = rows[length(rows)])
+  row_rhs <- xpress::getrhs(prob = prob,
+                            first = rows[1],
+                            last = rows[length(rows)])
 
   # Compile List
   row_equation_vector <- sapply(X = rows_filtered,
@@ -451,7 +459,8 @@ get_row_equations <- function(prob, rows){
                                                                          row_rhs = row_rhs[[x]]))
 
   # Add to DataFrame
-  row_equation_df <- data.frame(ROW = rows_filtered-1, ROW_EQUATION = row_equation_vector)
+  row_equation_df <- data.frame(ROW = rows_filtered-1,
+                                ROW_EQUATION = row_equation_vector)
 
   # Return
   return(row_equation_df)
@@ -561,19 +570,19 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
     problemdata <- list()
 
     # Create Objective Function
-    problemdata$objcoef <- obj$solution |> as.numeric()
+    problemdata$objcoef <- as.numeric(obj$solution)
 
     # Get Row Coefficients
     problemdata$A <- constraints$matrix
 
     # Get Variable Types
-    problemdata$columntypes <- sapply(col_types, xpress_col_type_conversion) |> unname()
+    problemdata$columntypes <- unname(sapply(col_types, xpress_col_type_conversion))
 
     # Get problemdata Types
-    problemdata$rowtype <- (lapply(X = constraints$sense, FUN = xpress_sense_conversion) |> unlist())
+    problemdata$rowtype <- unlist(lapply(X = constraints$sense, FUN = xpress_sense_conversion))
 
     # Get Right-Hand Side
-    problemdata$rhs <- constraints$rhs |> as.numeric()
+    problemdata$rhs <- as.numeric(constraints$rhs)
 
     # specify lower bounds and upper bounds for the columns
     problemdata$lb <- lower_bounds
@@ -610,7 +619,7 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
     summary(xpress::xprs_optimize(p))
 
     # Get Solution Status
-    sol_status <- getintattrib(p, xpress:::MIPSTATUS) |> get_ompr_status()
+    sol_status <- get_ompr_status(getintattrib(p, xpress:::MIPSTATUS))
 
     # Run If Feasible
     if (sol_status=='optimal'){
@@ -622,8 +631,8 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
       model_attributes <- xpress_get_params(prob = p)
 
       # Fix Global Variables
-      xpress_verison <- packageVersion('xpress') |> as.character()
-      if (compareVersion(xpress_verison |> as.character(),'9.2.5') >= 0){
+      xpress_verison <- as.character(packageVersion('xpress'))
+      if (compareVersion(as.character(xpress_verison),'9.2.5') >= 0){
         xpress::fixmipentities(prob = p, options = 0)
       } else {
         xpress::fixglobals(prob = p, options = 0)
@@ -638,13 +647,13 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
       # Extract Sensitivity Ranges
       obj_sensitivity <- xpress::objsa(p, 0:(model_attributes$int_attributes$COLS-1))
       bnd_sensitivity <- xpress::bndsa(p, 0:(model_attributes$int_attributes$COLS-1))
-      rhs_sensitivy <- xpress::rhssa(prob = p, rowind = 0:((constraints$rhs |> length())-1))
+      rhs_sensitivy <- xpress::rhssa(prob = p, rowind = 0:((length(constraints$rhs))-1))
 
       # Add Variable Names to Sensitivity Ranges
-      obj_sensitivity_df <- data.frame(Variable = xpress::getnamelist(p,2,0,(obj_sensitivity$lower |> length()-1)),
+      obj_sensitivity_df <- data.frame(Variable = xpress::getnamelist(p,2,0,(length(obj_sensitivity$lower)-1)),
                                        lower = obj_sensitivity$lower,
                                        upper = obj_sensitivity$upper)
-      bnd_sensitivity_df <- data.frame(Variable = xpress::getnamelist(p,2,0,(obj_sensitivity$lower |> length()-1)),
+      bnd_sensitivity_df <- data.frame(Variable = xpress::getnamelist(p,2,0,(length(obj_sensitivity$lower)-1)),
                                        lblower = bnd_sensitivity$lblower,
                                        lbupper = bnd_sensitivity$lbupper,
                                        ublower = bnd_sensitivity$ublower,
@@ -652,7 +661,7 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
 
       # Get Reduced Costs
       reduced_costs <- data.frame(Variable = problemdata$colname,
-                                  value = lp_solution$djs[1:(problemdata$colname |> length())])
+                                  value = lp_solution$djs[1:(length(problemdata$colname))])
 
       # Get Row Constraints
       if(control$add_row_contraints){
@@ -661,7 +670,7 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
       }
 
       # Get Xpress Status
-      xpress_status <- model_attributes$int_attributes$MIPSTATUS |> get_xpress_status()
+      xpress_status <- get_xpress_status(model_attributes$int_attributes$MIPSTATUS)
 
     } else if (sol_status == 'infeasible' & control$inf_analysis){
 
@@ -680,7 +689,7 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
       # Create Solution List
       xpress_solution <- ompr::new_solution(model = model,
                                             objective_value = model_attributes$dbl_attributes$MIPOBJVAL,
-                                            status = (model_attributes$int_attributes$MIPSTATUS |> get_ompr_status()),
+                                            status = get_ompr_status(model_attributes$int_attributes$MIPSTATUS),
                                             solution = xpress_results,
                                             additional_solver_output = list(obj_sensitivity = obj_sensitivity_df,
                                                                             bnd_sensitivity = bnd_sensitivity_df,
@@ -700,7 +709,7 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
       # Create Solution List
       xpress_solution <- ompr::new_solution(model = model,
                                             objective_value = Inf,
-                                            status = xpress::getintattrib(p,xpress:::MIPSTATUS) |> get_ompr_status(),
+                                            status = get_ompr_status(xpress::getintattrib(p,xpress:::MIPSTATUS)),
                                             solution = xpress_results,
                                             additional_solver_output = list(inf_analysis = inf_analysis,
                                                                             model_attributes = model_attributes,
