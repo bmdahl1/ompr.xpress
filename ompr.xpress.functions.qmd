@@ -45,123 +45,124 @@ rm(list = ls())
 #| include: false 
 
 # Set Static Variables
-# ndays <- 5
-# nhours <- 24
-# per <- ndays * nhours
-# 
-# # Set Storage Values
-# in_storage <- 10
-# hourly_inflow <- 35
-# hourly_ifr <- 1
-# storage_max <- 300
-# storage_min <- 0
-# 
-# # Set PH Parameters
-# gen_segs <- 3
-# nrz_min <- 10
-# nrz_max <- 18
-# ph_pmin <- 6
-# ph_pmax <- 32
-# ph_starts <- 2
-# 
-# # Create Reservoir Parameters
-# res_parameters <- data.frame(HOUR = 1:per,
-#                              RES_MIN = rep(storage_min, per),
-#                              RES_MAX = rep(storage_max, per),
-#                              INFLOW = rep(hourly_inflow, per),
-#                              IFR = rep(hourly_ifr, per))
-# 
-# # Create Unit Parameters
-# unit_parameters <- data.frame(HOUR = 1:per,
-#                               MIN_LOAD = rep(6,per),
-#                               PMIN = rep(0,per),
-#                               PMAX = rep(32,per))
-# 
-# # Adjust Availability
-# unit_parameters <- unit_parameters |>
-#    mutate(PMAX = if_else(row_number()>= 100, 0, PMAX))
-# 
-# # PH WD Segments
-# unit_wd <- data.frame(MW_SEG = c(17.86, 11.14, 4),
-#                       SLOPE = c(2.26, 2.44, 2.71))
-# 
-# # Leakage
-# leakage <- 7.21
-# 
-# # Create Price Forecast
-# price <- data.frame(HOUR = 1:per,
-#                     PRICE = rep(c(62.29,58.00,55.70,55.46,55.70,
-#                               56.83,55.46,52.43,47.69,46.20,
-#                               47.78,49.29,49.88,52.62,54.64,
-#                               54.82,59.85,62.95,78.40,108.64,
-#                               87.62,72.74,71.54,65.69),ndays))
-# 
-# #_________________________________________________________________________________________________________
-# #### Build Optimization Model ####
-# 
-# # Create Model
-# model <- ompr::MIPModel()
-# 
-# #_______________________________________________________
-# ##### Model - Create Decision Variables ####
-# 
-# # Create Decision Variables
-# model <- model |>
-#   # Create Gen Variables
-#   add_variable(gen[p], type = 'continuous', p = 1:per, lb = 0) |>
-#   add_variable(flow[p], type = 'continuous', p = 1:per, lb = 0) |>
-#   # Create Semi-Continuous Variable
-#   add_variable(gen_semcont_bin[p], type = 'binary', p=1:per) |>
-#   # Create Piecewise Gen Variables
-#   add_variable(gen_seg_enf[p,g], type = 'binary', p = 1:per, g = 1:gen_segs, lb = 0) |>
-#   add_variable(gen_segs[p,g], type = 'continuous', p = 1:per, g = 1:gen_segs, lb = 0) |>
-#   # Create No-Run Zone Variables
-#   add_variable(nrz_bin_one[p], type = 'binary', p = 1:per) |>
-#   add_variable(nrz_bin_two[p], type = 'binary', p = 1:per) |>
-#   add_variable(gen_stage_one[p], type = 'continuous', p = 1:per, lb = 0) |>
-#   add_variable(gen_stage_two[p], type = 'continuous', p = 1:per, lb = 0) |>
-#   # Create Reservoir Variables
-#   add_variable(storage[p], type = 'continuous', p = 1:per, lb = 0)
-# 
-# #_______________________________________________________
-# ##### Model - Create Constraints ####
-# 
-# # Create Model Constraints
-# model <- model |>
-#   # Add Generation Constraints
-#   add_constraint(gen[p] <= unit_parameters$PMAX[p], p = 1:per) |>
-#   add_constraint(gen[p] >= unit_parameters$PMIN[p] , p = 1:per, lb = 0) |>
-#   # Add Semi-Continous Constraints
-#   add_constraint(gen[p] <= gen_semcont_bin[p]*unit_parameters$PMAX[p], p = 1:per) |>
-#   add_constraint(gen[p] >= gen_semcont_bin[p]*unit_parameters$MIN_LOAD[p], p = 1:per) |>
-#   # Add Piecewise Generation Constraints
-#   add_constraint(sum_over(gen_segs[p,g], g = 1:nrow(unit_wd)) == gen[p], p = 1:per) |>
-#   add_constraint(gen_segs[p,g] <= unit_wd$MW_SEG[g]*gen_seg_enf[p,g], p = 1:per, g = 1:3) |>
-#   add_constraint(gen_seg_enf[p,g] >= gen_seg_enf[p,g+1], p = 1:per, g = 1:(3-1)) |>
-#   add_constraint(gen_segs[p,g] >= unit_wd$MW_SEG[g]*gen_seg_enf[p,g+1], p = 1:per, g = 1:(3-1)) |>
-#   add_constraint(gen[p] >= gen_seg_enf[p,1]*1, p = 1:per) |>
-#   # Add No-Run Zone Constraints
-#   add_constraint(gen_stage_one[p] <= (nrz_min - ph_pmin)*nrz_bin_one[p], p = 1:per) |>
-#   add_constraint(gen_stage_two[p] <= (unit_parameters$PMAX[p] - nrz_max)*nrz_bin_two[p], p = 1:per) |>
-#   add_constraint(nrz_bin_one[p] >= nrz_bin_two[p], p = 1:per) |>
-#   add_constraint(gen_stage_one[p] >= (nrz_min - ph_pmin)*nrz_bin_two[p], p = 1:per) |>
-#   # Apply NRZ Constraint
-#   add_constraint(gen[p] == (ph_pmin*nrz_bin_one[p] + gen_stage_one[p] + ((nrz_max - nrz_min)*nrz_bin_two[p] + gen_stage_two[p])),
-#                  p = 1:per) |>
-#   # Create Flow Equations
-#   add_constraint((sum_over(gen_segs[p,g]*unit_wd$SLOPE[g], g = 1:3) + leakage*gen_seg_enf[p,1]) == flow[p], p = 1:per) |>
-#   # Create Reservoir Storage Constraints
-#   add_constraint(storage[p] == in_storage + hourly_inflow - hourly_ifr - flow[p], p = 1) |>
-#   add_constraint(storage[p] == storage[p-1] + hourly_inflow - hourly_ifr - flow[p], p = 2:per) |>
-#   add_constraint(storage[p] >= res_parameters$RES_MIN[p], p = 1:per) |>
-#   add_constraint(storage[p] <= res_parameters$RES_MAX[p], p = 1:per)
-# 
-# #_______________________________________________________
-# ##### Model - Create Objective Function ####
-# 
-#   # Create Objective Function
-# model <- model |>
-#   set_objective(sum_over(gen[p]*price$PRICE[p], p = 1:per))
+ndays <- 5
+nhours <- 24
+per <- ndays * nhours
+
+# Set Storage Values
+in_storage <- 10
+hourly_inflow <- 35
+hourly_ifr <- 1
+storage_max <- 300
+storage_min <- 0
+
+# Set PH Parameters
+gen_segs <- 3
+nrz_min <- 10
+nrz_max <- 18
+ph_pmin <- 6
+ph_pmax <- 32
+ph_starts <- 2
+
+# Create Reservoir Parameters
+res_parameters <- data.frame(HOUR = 1:per,
+                             RES_MIN = rep(storage_min, per),
+                             RES_MAX = rep(storage_max, per),
+                             INFLOW = rep(hourly_inflow, per),
+                             IFR = rep(hourly_ifr, per))
+
+# Create Unit Parameters
+unit_parameters <- data.frame(HOUR = 1:per,
+                              MIN_LOAD = rep(6,per),
+                              PMIN = rep(0,per),
+                              PMAX = rep(32,per))
+
+# Adjust Availability
+unit_parameters <- unit_parameters |>
+   mutate(PMAX = if_else(row_number()>= 100, PMAX, PMAX))
+
+# PH WD Segments
+unit_wd <- data.frame(MW_SEG = c(17.86, 11.14, 4),
+                      SLOPE = c(2.26, 2.44, 2.71))
+
+# Leakage
+leakage <- 7.21
+
+# Create Price Forecast
+price <- data.frame(HOUR = 1:per,
+                    PRICE = rep(c(62.29,58.00,55.70,55.46,55.70,
+                              56.83,55.46,52.43,47.69,46.20,
+                              47.78,49.29,49.88,52.62,54.64,
+                              54.82,59.85,62.95,78.40,108.64,
+                              87.62,72.74,71.54,65.69),ndays))
+
+#_________________________________________________________________________________________________________
+#### Build Optimization Model ####
+
+# Create Model
+model <- ompr::MIPModel()
+
+#_______________________________________________________
+##### Model - Create Decision Variables ####
+
+# Create Decision Variables
+model <- model |>
+  # Create Gen Variables
+  add_variable(gen[p], type = 'continuous', p = 1:per, lb = 0) |>
+  add_variable(flow[p], type = 'continuous', p = 1:per, lb = 0) |>
+  # Create Semi-Continuous Variable
+  add_variable(gen_semcont_bin[p], type = 'binary', p=1:per) |>
+  # Create Piecewise Gen Variables
+  add_variable(gen_seg_enf[p,g], type = 'binary', p = 1:per, g = 1:gen_segs, lb = 0) |>
+  add_variable(gen_segs[p,g], type = 'continuous', p = 1:per, g = 1:gen_segs, lb = 0) |>
+  # Create No-Run Zone Variables
+  add_variable(nrz_bin_one[p], type = 'binary', p = 1:per) |>
+  add_variable(nrz_bin_two[p], type = 'binary', p = 1:per) |>
+  add_variable(gen_stage_one[p], type = 'continuous', p = 1:per, lb = 0) |>
+  add_variable(gen_stage_two[p], type = 'continuous', p = 1:per, lb = 0) |>
+  # Create Reservoir Variables
+  add_variable(storage[p], type = 'continuous', p = 1:per, lb = 0)
+
+#_______________________________________________________
+##### Model - Create Constraints ####
+
+# Create Model Constraints
+model <- model |>
+  # Add Generation Constraints
+  add_constraint(gen[p] <= unit_parameters$PMAX[p], p = 1:per) |>
+  add_constraint(gen[p] >= unit_parameters$PMIN[p] , p = 1:per, lb = 0) |>
+  # Add Semi-Continous Constraints
+  add_constraint(gen[p] <= gen_semcont_bin[p]*unit_parameters$PMAX[p], p = 1:per) |>
+  add_constraint(gen[p] >= gen_semcont_bin[p]*unit_parameters$MIN_LOAD[p], p = 1:per) |>
+  # Add Piecewise Generation Constraints
+  add_constraint(sum_over(gen_segs[p,g], g = 1:nrow(unit_wd)) == gen[p], p = 1:per) |>
+  add_constraint(gen_segs[p,g] <= unit_wd$MW_SEG[g]*gen_seg_enf[p,g], p = 1:per, g = 1:3) |>
+  add_constraint(gen_seg_enf[p,g] >= gen_seg_enf[p,g+1], p = 1:per, g = 1:(3-1)) |>
+  add_constraint(gen_segs[p,g] >= unit_wd$MW_SEG[g]*gen_seg_enf[p,g+1], p = 1:per, g = 1:(3-1)) |>
+  add_constraint(gen[p] >= gen_seg_enf[p,1]*1, p = 1:per) |>
+  # Add No-Run Zone Constraints
+  add_constraint(gen_stage_one[p] <= (nrz_min - ph_pmin)*nrz_bin_one[p], p = 1:per) |>
+  add_constraint(gen_stage_two[p] <= (unit_parameters$PMAX[p] - nrz_max)*nrz_bin_two[p], p = 1:per) |>
+  add_constraint(nrz_bin_one[p] >= nrz_bin_two[p], p = 1:per) |>
+  add_constraint(gen_stage_one[p] >= (nrz_min - ph_pmin)*nrz_bin_two[p], p = 1:per) |>
+  # Apply NRZ Constraint
+  add_constraint(gen[p] == (ph_pmin*nrz_bin_one[p] + gen_stage_one[p] + 
+                              ((nrz_max - nrz_min)*nrz_bin_two[p] + gen_stage_two[p])),
+                 p = 1:per) |>
+  # Create Flow Equations
+  add_constraint((sum_over(gen_segs[p,g]*unit_wd$SLOPE[g], g = 1:3) + leakage*gen_seg_enf[p,1]) == flow[p], p = 1:per) |>
+  # Create Reservoir Storage Constraints
+  add_constraint(storage[p] == in_storage + hourly_inflow - hourly_ifr - flow[p], p = 1) |>
+  add_constraint(storage[p] == storage[p-1] + hourly_inflow - hourly_ifr - flow[p], p = 2:per) |>
+  add_constraint(storage[p] >= res_parameters$RES_MIN[p], p = 1:per) |>
+  add_constraint(storage[p] <= res_parameters$RES_MAX[p], p = 1:per)
+
+#_______________________________________________________
+##### Model - Create Objective Function ####
+
+  # Create Objective Function
+model <- model |>
+  set_objective(sum_over(gen[p]*price$PRICE[p], p = 1:per))
 
 ```
 
@@ -400,27 +401,32 @@ xpress_get_params <- function(prob){
   
   # Get Double Attributes
   dbl_attributes <- lapply(xprs_getdoubleattributes(),
-                           function(x) { getdblattrib(prob, x) })
+                           function(x) {try(getdblattrib(prob, x),
+                                             silent = TRUE)})
   
   # Get Integer Attritubes
   int_attributes <- lapply(xprs_getintattributes(),
-                           function(x) { getintattrib(prob, x) })
-  
+                           function(x) {try(getintattrib(prob, x))})
+
   # Get String Attributes
-  str_attributes <- lapply(xprs_getstringattributes(),
-                            function(x) { getstringattrib(prob, x) })
+  str_attributes <- lapply(xprs_getstringattributes() |> unlist(),
+                            function(x) { try(getstringattrib(prob, x), 
+                                              silent = TRUE)})
   
   # Get Integer Controls
   int_controls <- lapply(xprs_getintcontrols(),
-                          function(x) { getintcontrol(prob, x) })
+                          function(x) {try(getintcontrol(prob, x),
+                                           silent = TRUE)})
   
   # Get Double Controls
   dbl_controls <- lapply(xprs_getdoublecontrols(),
-                          function(x) { getdblcontrol(prob, x) })
+                          function(x) {try(getdblcontrol(prob, x),
+                                           silent = TRUE)})
   
   # String Control
   str_controls <- lapply(xprs_getstringcontrols(),
-                          function(x) { getstringcontrol(prob, x) })
+                          function(x) {try(getstringcontrol(prob, x),
+                                           silent = TRUE)})
   
   # Create List
   param_list <- list(dbl_attributes = dbl_attributes,
@@ -714,6 +720,12 @@ add_mip_sol <- function(prob, heur_sol){
 
 ```{r}
 
+control = list(problem_name = 'Xpress Problem', 
+               verbose = TRUE,
+               inf_analysis = TRUE, 
+               add_row_contraints = TRUE,
+               MAXTIME = 1)
+
 xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', verbose = TRUE,
                                             inf_analysis = TRUE, add_row_contraints = TRUE), ...){
 
@@ -787,7 +799,8 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
     if (control$verbose){setoutput(p)}
     
     # Add Presolution
-    if (nrow(control$heur_sol) > 0){
+  
+  if (nrow(control$heur_sol) > 0){
       
       # Create MIP Soluiton
       add_mip_sol(prob = p,
@@ -806,6 +819,9 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
 
       # Extract Xpress Results
       xpress_results <- data.frame(Variable = problemdata$colname, Value = xprs_getsolution(p))
+      
+      # If Solved Before Time, Then Run PostSolve
+      if (getintattrib(p, xpress:::MIPSTATUS)==4){xpress::postsolve(p)}
 
       # Get All Controls
       model_attributes <- xpress_get_params(prob = p)
@@ -817,7 +833,7 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
       } else {
         xpress::fixglobals(prob = p, options = 0)
       }
-
+      
       # Rerun Problem As Linear Model For Sensitivity Analysis
       xpress::lpoptimize(p)
 
@@ -912,9 +928,8 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
 
 # Run Model
 model_results <- model |> 
-  solve_model(xpress_optimizer(MAXTIME = 60,
-                               MIPRELSTOP = .0001,
-                               TIMELIMIT = 10))
+  solve_model(xpress_optimizer(MAXTIME = 1,
+                               MIPRELSTOP = .0001))
 
 ```
 

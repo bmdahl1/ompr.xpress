@@ -1,6 +1,6 @@
 Package: ompr.xpress
 Title: A solver for 'ompr' that uses the FICO Xpress algorithm
-Version: 0.0.0.9100
+Version: 0.0.0.9200
 Authors@R: 
     person("Brandon", "Dahl", , "bmdahl1@gmail.com", role = c("aut", "cre"))
 Description: An 'ompr' interface to FICO's XPress algorithm. 

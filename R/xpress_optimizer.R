@@ -214,27 +214,32 @@ xpress_get_params <- function(prob){
 
   # Get Double Attributes
   dbl_attributes <- lapply(xprs_getdoubleattributes(),
-                           function(x) { getdblattrib(prob, x) })
+                           function(x) {try(getdblattrib(prob, x),
+                                            silent = TRUE)})
 
   # Get Integer Attritubes
   int_attributes <- lapply(xprs_getintattributes(),
-                           function(x) { getintattrib(prob, x) })
+                           function(x) {try(getintattrib(prob, x))})
 
   # Get String Attributes
-  str_attributes <- lapply(xprs_getstringattributes(),
-                           function(x) { getstringattrib(prob, x) })
+  str_attributes <- lapply(xprs_getstringattributes() |> unlist(),
+                           function(x) { try(getstringattrib(prob, x),
+                                             silent = TRUE)})
 
   # Get Integer Controls
   int_controls <- lapply(xprs_getintcontrols(),
-                         function(x) { getintcontrol(prob, x) })
+                         function(x) {try(getintcontrol(prob, x),
+                                          silent = TRUE)})
 
   # Get Double Controls
   dbl_controls <- lapply(xprs_getdoublecontrols(),
-                         function(x) { getdblcontrol(prob, x) })
+                         function(x) {try(getdblcontrol(prob, x),
+                                          silent = TRUE)})
 
   # String Control
   str_controls <- lapply(xprs_getstringcontrols(),
-                         function(x) { getstringcontrol(prob, x) })
+                         function(x) {try(getstringcontrol(prob, x),
+                                          silent = TRUE)})
 
   # Create List
   param_list <- list(dbl_attributes = dbl_attributes,
@@ -540,7 +545,7 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
   # Check For Xpress Package
   if (!requireNamespace("xpress", quietly = TRUE)){
 
-    # Notify IUser
+    # Notify User
     stop('You dont have the Xpress package installed')
 
   }
@@ -551,7 +556,7 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
     # Get All Control Parameters
     control <- c(control, list(...))
 
-    # Add Heursitc Solution
+    # Add Heuristic Solution
     if (!('heur_sol' %in% names(control))){
       control$heur_sol <- data.frame()
     }
@@ -606,10 +611,10 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
     # Set Output to Console
     if (control$verbose){setoutput(p)}
 
-    # Add Presolution
+    # Add Pre-solution
     if (nrow(control$heur_sol) > 0){
 
-      # Create MIP Soluiton
+      # Create MIP Solution
       add_mip_sol(prob = p,
                   heur_sol = control$heur_sol)
 
@@ -626,6 +631,9 @@ xpress_optimizer <- function(control = list(problem_name = 'Xpress Problem', ver
 
       # Extract Xpress Results
       xpress_results <- data.frame(Variable = problemdata$colname, Value = xprs_getsolution(p))
+
+      # If Solved Before Time, Then Run PostSolve
+      if (getintattrib(p, xpress:::MIPSTATUS)==4){xpress::postsolve(p)}
 
       # Get All Controls
       model_attributes <- xpress_get_params(prob = p)
