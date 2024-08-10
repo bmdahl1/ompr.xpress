@@ -54,7 +54,7 @@ We can use a simple police dispatch shift scheduling problem:
 
 A police department must employ a specified number of dispatchers for all 4-hour shifts throughout the day. Each dispatcher must work an 8-hour shift, and shifts from 2000 - 0800 earn a higher wage rate.
 
-The goal of the optimization will be to minimize total wage costs while supply all needed dispatchers.
+The goal of the optimization will be to minimize total wage costs while supplying all needed dispatchers.
 
 ```{r}
 #| echo: false
@@ -141,15 +141,14 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
   fig.path = "man/figures/README-",
-  out.width = "75%"
+  out.width = "50%"
 )
-
 
 # Plot Required vs. On Shift
 plot(x = 1:6, 
      y = shift_schedule$Required, 
      type = 'l', 
-     lty = 'dashed', 
+     lty = 'solid', 
      col = 'black',
      xlab = 'Shift Number',
      ylab = 'On Shift',
@@ -159,13 +158,13 @@ plot(x = 1:6,
      cex.lab=.75, #change font size of axis labels
      cex.axis=.75, #change font size of axis text  
      main = 'Shift Schedule - On Shift vs. Required')
-lines(x = 1:6, y = shift_schedule$ON_SHIFT, type = 'l', col = 'red')
+lines(x = 1:6, y = shift_schedule$ON_SHIFT, type = 'l', lty = 'dashed', col = 'red')
 
 # Create Legend
 legend('topright',
        legend = c('Required','On Shift'),
        col = c('black','red'),
-       lty = c('dashed','solid'),
+       lty = c('solid','dashed'),
        cex = .75)
 
 ```
